@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unwind — charlesshen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet"></noscript>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #fafafa;
+      --text-primary: #1a1a1a;
+      --text-secondary: #555;
+      --text-tertiary: #999;
+      --border: #e5e5e5;
+      --hover-bg: #f0f0f0;
+    }
+
+    :root.dark {
+      --bg: #111;
+      --text-primary: #e8e8e8;
+      --text-secondary: #aaa;
+      --text-tertiary: #666;
+      --border: #222;
+      --hover-bg: #1a1a1a;
+    }
+
+    ::selection { background: #ddd; }
+    :root.dark ::selection { background: #333; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-size: 15px;
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ─── Navigation ─── */
+    nav {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      padding: 32px 0 48px;
+    }
+
+    nav button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      font-family: inherit;
+      padding: 0;
+      color: var(--text-tertiary);
+      font-weight: 400;
+      transition: color 0.2s;
+    }
+
+    nav button:hover { color: var(--text-primary); }
+    nav button.active { color: var(--text-primary); font-weight: 500; }
+
+    .nav-spacer { flex: 1; }
+
+    .private-badge {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .private-badge.visible { display: inline; }
+
+    /* ─── Pages ─── */
+    .page { display: none; }
+    .page.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Home ─── */
+    .home-intro { margin-bottom: 64px; }
+    .home-intro h1 { font-size: 20px; font-weight: 500; margin-bottom: 16px; }
+
+    .unwind-illustration {
+      width: 420px;
+      height: auto;
+      display: block;
+      margin: 4px 0 8px;
+    }
+    .unwind-illustration-img {
+      width: 360px;
+      height: auto;
+      display: block;
+      margin: 0 0 -8px;
+    }
+    .home-intro p {
+      color: var(--text-secondary);
+      line-height: 1.75;
+      max-width: 520px;
+    }
+
+    .section-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .recent-item {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: opacity 0.2s;
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
+    }
+
+    .recent-item:first-child { border-top: 1px solid var(--border); }
+    .recent-item:hover { opacity: 0.65; }
+
+    .recent-type {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-family: monospace;
+      min-width: 36px;
+      flex-shrink: 0;
+    }
+
+    .recent-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .recent-date {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-family: monospace;
+      white-space: nowrap;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 48px;
+    }
+
+    .nav-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 20px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      border-color: var(--text-tertiary);
+      color: var(--text-primary);
+    }
+
+    /* ─── Stream ─── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .page-title { font-size: 20px; font-weight: 500; }
+    .page-subtitle { color: var(--text-tertiary); font-size: 14px; margin-bottom: 32px; }
+
+    .tag-filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .tag-btn {
+      background: none;
+      color: var(--text-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .tag-btn:hover { border-color: var(--text-tertiary); }
+
+    .tag-btn.active {
+      background: var(--text-primary);
+      color: var(--bg);
+      border-color: var(--text-primary);
+    }
+
+    .stream-entry {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      animation: fadeIn 0.4s ease both;
+      position: relative;
+    }
+
+    .stream-entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+    }
+
+    .stream-content {
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.75;
+      flex: 1;
+    }
+
+    .stream-content h3,
+    .writing-summary h3 {
+      font-size: 1.15em;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 6px 0 2px;
+    }
+
+    .stream-content p,
+    .writing-summary p {
+      margin: 0 0 4px;
+    }
+
+    .stream-content p:last-child,
+    .writing-summary p:last-child {
+      margin-bottom: 0;
+    }
+
+    .entry-date {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-family: monospace;
+      white-space: nowrap;
+      padding-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .stream-tags-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+
+    .stream-tags-row .delete-btn {
+      position: static;
+      opacity: 0;
+    }
+
+    .stream-entry:hover .stream-tags-row .delete-btn { opacity: 1; }
+
+    .stream-tags {
+      display: flex;
+      gap: 8px;
+    }
+
+    .stream-tags span {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .tag-suggest {
+      display: none;
+      position: absolute;
+      left: 0; right: 0; top: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 4px;
+      z-index: 10;
+      max-height: 150px;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .tag-suggest.visible { display: block; }
+
+    .tag-suggest-item {
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .tag-suggest-item:hover,
+    .tag-suggest-item.active {
+      background: var(--border);
+      color: var(--text-primary);
+    }
+
+    .private-tag {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-right: 8px;
+    }
+
+    /* ─── Writing ─── */
+    .writing-entry {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: opacity 0.2s;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .writing-entry:hover { opacity: 0.65; }
+
+    .writing-title {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+
+    .writing-summary {
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .writing-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .writing-meta-row .delete-btn {
+      position: static;
+      opacity: 0;
+    }
+
+    .writing-entry:hover .writing-meta-row .delete-btn { opacity: 1; }
+
+    .writing-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-family: monospace;
+    }
+
+    /* ─── Highlights ─── */
+    .timeline {
+      position: relative;
+      padding-left: 32px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 8px;
+      bottom: 8px;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .highlight-entry {
+      position: relative;
+      margin-bottom: 36px;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: -29px;
+      top: 6px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      transition: border-color 0.3s;
+    }
+
+    .highlight-date {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-family: monospace;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .highlight-image {
+      width: 100%;
+      height: 180px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .highlight-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .highlight-desc-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    .highlight-desc-row .delete-btn {
+      position: static;
+      opacity: 0;
+      flex-shrink: 0;
+    }
+
+    .highlight-entry:hover .highlight-desc-row .delete-btn { opacity: 1; }
+
+    .highlight-desc {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ─── Private ─── */
+    .private-form { max-width: 320px; }
+
+    .pw-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .pw-wrapper input {
+      width: 100%;
+      padding: 10px 40px 10px 12px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .pw-wrapper input:focus { border-color: var(--text-tertiary); }
+    .pw-wrapper input.error { border-color: #c44; }
+
+    .pw-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s;
+    }
+
+    .pw-toggle:hover { color: var(--text-primary); }
+
+    .pw-toggle svg { width: 18px; height: 18px; }
+
+    .private-form .error-msg {
+      color: #c44;
+      font-size: 13px;
+      margin-top: 8px;
+      display: none;
+    }
+
+    .private-form .error-msg.visible { display: block; }
+
+    .unlock-btn {
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px;
+      background: var(--text-primary);
+      color: var(--bg);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: inherit;
+      transition: opacity 0.2s;
+    }
+
+    .unlock-btn:hover { opacity: 0.85; }
+
+    .lock-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 20px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .lock-btn:hover { border-color: var(--text-tertiary); }
+
+    .private-unlocked { display: none; }
+    .private-locked { display: block; }
+
+    /* ─── Editor ─── */
+    .add-btn {
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      display: none;
+    }
+
+    .add-btn:hover {
+      border-color: var(--text-tertiary);
+      color: var(--text-primary);
+    }
+
+    .add-btn.visible { display: inline-flex; align-items: center; gap: 6px; }
+
+    .editor-panel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      animation: fadeIn 0.2s ease;
+      display: none;
+    }
+
+    .editor-panel.visible { display: block; }
+
+    .editor-panel label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 6px;
+      margin-top: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .editor-panel label:first-child { margin-top: 0; }
+
+    .editor-panel input[type="text"],
+    .editor-panel input[type="date"],
+    .editor-panel textarea,
+    .editor-panel select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      resize: vertical;
+    }
+
+    .editor-panel input:focus,
+    .editor-panel textarea:focus,
+    .editor-panel select:focus { border-color: var(--text-tertiary); }
+
+    .editor-panel textarea { min-height: 80px; line-height: 1.6; }
+
+    .format-toolbar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+
+    .format-toolbar button {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .format-toolbar button:hover {
+      background: var(--border);
+      color: var(--text-primary);
+    }
+
+    .format-toolbar button.active {
+      background: var(--text-primary);
+      color: var(--bg);
+      border-color: var(--text-primary);
+    }
+
+
+    .editor-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      align-items: center;
+    }
+
+    .editor-save {
+      background: var(--text-primary);
+      color: var(--bg);
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      transition: opacity 0.2s;
+    }
+
+    .editor-save:hover { opacity: 0.85; }
+
+    .editor-cancel {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      font-family: inherit;
+      transition: color 0.2s;
+    }
+
+    .editor-cancel:hover { color: var(--text-primary); }
+
+    .editor-draft {
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .editor-draft:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+
+    .draft-tag {
+      font-size: 11px;
+      color: #c90;
+      border: 1px solid #c903;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+    }
+
+    .edit-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      font-family: inherit;
+      padding: 2px 6px;
+      border-radius: 3px;
+      transition: all 0.2s;
+      opacity: 0;
+    }
+
+    .stream-entry:hover .edit-btn,
+    .writing-entry:hover .edit-btn,
+    .highlight-entry:hover .edit-btn { opacity: 1; }
+
+    .edit-btn:hover { color: var(--text-primary); }
+    .edit-btn + .delete-btn { margin-left: 4px; }
+
+    .editor-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .editor-check input[type="checkbox"] {
+      accent-color: var(--text-primary);
+    }
+
+    .editor-check span {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      font-family: inherit;
+      padding: 2px 6px;
+      border-radius: 3px;
+      transition: all 0.2s;
+      opacity: 0;
+      position: absolute;
+      right: 0;
+      top: 20px;
+    }
+
+    .stream-entry:hover .delete-btn,
+    .writing-entry:hover .delete-btn,
+    .highlight-entry:hover .delete-btn { opacity: 1; }
+
+    .delete-btn:hover { color: #c44; }
+
+    /* ─── Data management ─── */
+    .data-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .data-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .data-btn:hover {
+      border-color: var(--text-tertiary);
+      color: var(--text-primary);
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    footer span { font-size: 13px; color: var(--text-tertiary); }
+
+    .theme-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+
+    .theme-toggle:hover { color: var(--text-primary); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 480px) {
+      nav { gap: 16px; padding: 24px 0 36px; }
+      nav button { font-size: 14px; }
+      .home-intro h1 { font-size: 18px; }
+      .highlight-image { height: 140px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ─── Navigation ─── -->
+    <nav>
+      <button class="active" data-page="home">Home</button>
+      <button data-page="stream">Stream</button>
+      <button data-page="writing">Writing</button>
+      <button data-page="highlights">Highlights</button>
+      <div class="nav-spacer"></div>
+      <span class="private-badge" id="privateBadge">Private Mode</span>
+      <button data-page="private" title="Private">○</button>
+    </nav>
+
+    <!-- ═══════════════ HOME ═══════════════ -->
+    <div class="page active" id="page-home">
+      <div class="home-intro">
+        <img class="unwind-illustration-img" src="illustration.png" alt="unwind illustration">
+        <h1>Unwind</h1>
+        <p style="color:var(--text-tertiary);font-size:14px;margin-bottom:16px;">by charlesshen</p>
+        <p>把纏在一起的問題，一條一條理開。這裡是我整理思考、輸出解法的地方。</p>
+      </div>
+
+      <div>
+        <h2 class="section-label">Recent</h2>
+        <div id="recentList"></div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="nav-btn" data-page="stream">All Thoughts →</button>
+        <button class="nav-btn" data-page="writing">All Writing →</button>
+        <button class="nav-btn" data-page="highlights">All Highlights →</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ STREAM ═══════════════ -->
+    <div class="page" id="page-stream">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Stream</h1>
+          <p class="page-subtitle">短想法、隨筆、日常觀察</p>
+        </div>
+        <button class="add-btn" id="addStreamBtn">+ New</button>
+      </div>
+      <div class="editor-panel" id="streamEditor">
+        <label>內容</label>
+        <div class="format-toolbar">
+          <button type="button" data-fmt="bold" title="粗體"><b>B</b></button>
+          <button type="button" data-fmt="heading" title="重點大字">H</button>
+        </div>
+        <textarea id="edStreamContent" placeholder="寫下你的想法... (支援 Markdown)"></textarea>
+        <label>Tags（用逗號分隔）</label>
+        <div style="position:relative;">
+          <input type="text" id="edStreamTags" placeholder="thoughts, life, reading" autocomplete="off">
+          <div class="tag-suggest" id="tagSuggest"></div>
+        </div>
+        <div class="editor-actions">
+          <button class="editor-save" id="saveStream">Publish</button>
+          <button class="editor-draft" id="draftStream">Save Draft</button>
+          <button class="editor-cancel" id="cancelStream">Cancel</button>
+          <div class="editor-check">
+            <input type="checkbox" id="edStreamPrivate">
+            <span>Private</span>
+          </div>
+        </div>
+      </div>
+      <div class="tag-filters" id="tagFilters"></div>
+      <div id="streamList"></div>
+    </div>
+
+    <!-- ═══════════════ WRITING ═══════════════ -->
+    <div class="page" id="page-writing">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Writing</h1>
+          <p class="page-subtitle">長一點的文章和思考</p>
+        </div>
+        <button class="add-btn" id="addWritingBtn">+ New</button>
+      </div>
+      <div class="editor-panel" id="writingEditor">
+        <label>標題</label>
+        <input type="text" id="edWritingTitle" placeholder="文章標題">
+        <label>內容</label>
+        <div class="format-toolbar">
+          <button type="button" data-fmt="bold" title="粗體"><b>B</b></button>
+          <button type="button" data-fmt="heading" title="重點大字">H</button>
+        </div>
+        <textarea id="edWritingSummary" placeholder="寫下文章內容... (支援 Markdown)" style="min-height:160px;"></textarea>
+        <label>Tags（用逗號分隔）</label>
+        <div style="position:relative;">
+          <input type="text" id="edWritingTags" placeholder="thoughts, life, reading" autocomplete="off">
+          <div class="tag-suggest" id="tagSuggestWriting"></div>
+        </div>
+        <label>閱讀時間</label>
+        <input type="text" id="edWritingTime" placeholder="5 min">
+        <div class="editor-actions">
+          <button class="editor-save" id="saveWriting">Publish</button>
+          <button class="editor-draft" id="draftWriting">Save Draft</button>
+          <button class="editor-cancel" id="cancelWriting">Cancel</button>
+          <div class="editor-check">
+            <input type="checkbox" id="edWritingPrivate">
+            <span>Private</span>
+          </div>
+        </div>
+      </div>
+      <div id="writingList"></div>
+    </div>
+
+    <!-- ═══════════════ HIGHLIGHTS ═══════════════ -->
+    <div class="page" id="page-highlights">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Highlights</h1>
+          <p class="page-subtitle">人生的精華時刻</p>
+        </div>
+        <button class="add-btn" id="addHighlightBtn">+ New</button>
+      </div>
+      <div class="editor-panel" id="highlightEditor">
+        <label>標題</label>
+        <input type="text" id="edHighTitle" placeholder="這個時刻的名字">
+        <label>描述</label>
+        <textarea id="edHighDesc" placeholder="發生了什麼..."></textarea>
+        <label>顏色</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="colorPicker"></div>
+        <div class="editor-actions">
+          <button class="editor-save" id="saveHighlight">Save</button>
+          <button class="editor-cancel" id="cancelHighlight">Cancel</button>
+          <div class="editor-check">
+            <input type="checkbox" id="edHighPrivate">
+            <span>Private</span>
+          </div>
+        </div>
+      </div>
+      <div class="timeline" id="highlightsList"></div>
+    </div>
+
+    <!-- ═══════════════ PRIVATE ═══════════════ -->
+    <div class="page" id="page-private">
+      <div class="private-locked" id="privateLocked">
+        <h1 class="page-title">Private</h1>
+        <p class="page-subtitle">輸入密碼以查看私密內容</p>
+        <div class="private-form">
+          <div class="pw-wrapper">
+            <input type="password" id="passwordInput" placeholder="Password">
+            <button type="button" class="pw-toggle" id="pwToggle" title="顯示密碼">
+              <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="eyeClosed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+          <p class="error-msg" id="errorMsg">密碼錯誤</p>
+          <button class="unlock-btn" id="unlockBtn">Unlock</button>
+        </div>
+      </div>
+      <div class="private-unlocked" id="privateUnlocked">
+        <h1 class="page-title">Private Mode</h1>
+        <p style="color:var(--text-secondary);line-height:1.75;margin-bottom:24px;">
+          已解鎖。你現在可以在各頁面看到私密內容，也可以用 + New 按鈕新增內容。
+        </p>
+        <button class="lock-btn" id="lockBtn">Lock again</button>
+        <div class="data-actions">
+          <button class="data-btn" id="exportBtn">Export JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Footer ─── -->
+    <footer>
+      <span>© 2026 Unwind · charlesshen</span>
+      <button class="theme-toggle" id="themeToggle">Dark</button>
+    </footer>
+  </div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  SUPABASE CONFIG
+// ═══════════════════════════════════════════════════════════
+
+const SUPABASE_URL = "https://zoriszrkgoqfqorudcth.supabase.co";
+const SUPABASE_ANON = "sb_publishable_2WDf4cHELLvK_EWEWwKKwA_WJ_6vTBq";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const COLORS = ["#e8d5b7","#d4a574","#a8b5a0","#b0a0b8","#7eb8c9","#c9a07e","#8bb09a","#a0a8c9","#c9887e","#b8c97e"];
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+
+let STREAM = [];
+let WRITING = [];
+let HIGHLIGHTS = [];
+let currentPage = "home";
+let isPrivate = false;
+let activeTag = "all";
+let selectedColor = COLORS[0];
+let storedPassword = "";
+
+function today() { return new Date().toISOString().slice(0, 10); }
+
+// ═══════════════════════════════════════════════════════════
+//  DATA LAYER — Supabase
+// ═══════════════════════════════════════════════════════════
+
+async function loadPublicData() {
+  const [s, w, h] = await Promise.all([
+    sb.from('stream').select('*').order('date', { ascending: false }),
+    sb.from('writing').select('*').order('date', { ascending: false }),
+    sb.from('highlights').select('*').order('date', { ascending: false }),
+  ]);
+  STREAM = s.data || [];
+  WRITING = (w.data || []).map(x => ({ ...x, readTime: x.read_time, desc: x.description }));
+  HIGHLIGHTS = (h.data || []).map(x => ({ ...x, desc: x.description }));
+}
+
+async function loadPrivateData(pw) {
+  const [s, w, h] = await Promise.all([
+    sb.rpc('get_private_stream', { pw }),
+    sb.rpc('get_private_writing', { pw }),
+    sb.rpc('get_private_highlights', { pw }),
+  ]);
+  if (s.error) throw new Error(s.error.message);
+  STREAM = s.data || [];
+  WRITING = (w.data || []).map(x => ({ ...x, readTime: x.read_time, desc: x.description }));
+  HIGHLIGHTS = (h.data || []).map(x => ({ ...x, desc: x.description }));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDate(s) {
+  const d = new Date(s);
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+function fmtShort(s) {
+  const d = new Date(s);
+  return `${months[d.getMonth()]} ${d.getDate()}`;
+}
+
+function esc(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function stripMd(str) {
+  if (!str) return '';
+  return str.replace(/#{1,6}\s?/g, '').replace(/\*{1,2}(.*?)\*{1,2}/g, '$1').replace(/\n/g, ' ').trim();
+}
+
+function show(item) {
+  if (!isPrivate && (item.private || item.draft)) return false;
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════
+
+function renderRecent() {
+  const items = [
+    ...STREAM.filter(s => !s.private).slice(0, 2).map(s => ({ type: "stream", date: s.date, text: s.content, label: "想法" })),
+    ...WRITING.filter(w => !w.private).slice(0, 1).map(w => ({ type: "writing", date: w.date, text: w.title, label: "文章" })),
+    ...HIGHLIGHTS.filter(h => !h.private).slice(0, 1).map(h => ({ type: "highlights", date: h.date, text: h.title, label: "時刻" })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const el = $("#recentList");
+  el.innerHTML = items.length === 0
+    ? '<p style="color:var(--text-tertiary);font-size:14px;padding:16px 0;">還沒有內容，解鎖 Private Mode 後開始新增。</p>'
+    : items.map(it => `
+    <div class="recent-item" data-nav="${it.type}">
+      <span class="recent-type">${it.label}</span>
+      <span class="recent-text">${(() => { const t = esc(stripMd(it.text)); return t.length > 80 ? t.slice(0, 80) + '…' : t; })()}</span>
+      <span class="recent-date">${fmtShort(it.date)}</span>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('.recent-item').forEach(item => {
+    item.addEventListener('click', () => navigate(item.dataset.nav));
+  });
+}
+
+function renderStream() {
+  const items = STREAM.filter(show);
+  const tags = ["all", ...new Set(items.flatMap(s => s.tags || []))];
+
+  const filtersEl = $("#tagFilters");
+  filtersEl.innerHTML = tags.map(t => `
+    <button class="tag-btn ${activeTag === t ? 'active' : ''}" data-tag="${t}">${esc(t)}</button>
+  `).join('');
+
+  filtersEl.querySelectorAll('.tag-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTag = btn.dataset.tag;
+      renderStream();
+    });
+  });
+
+  const filtered = activeTag === "all" ? items : items.filter(s => (s.tags || []).includes(activeTag));
+  const listEl = $("#streamList");
+  listEl.innerHTML = filtered.map((s, i) => `
+    <div class="stream-entry" style="animation-delay: ${i * 0.05}s">
+      <div class="stream-entry-header">
+        <div class="stream-content">
+          ${s.draft ? '<span class="draft-tag">draft</span>' : ''}${s.private ? '<span class="private-tag">private</span>' : ''}${marked.parse(s.content)}
+        </div>
+        <span class="entry-date">${fmtShort(s.date)}</span>
+      </div>
+      <div class="stream-tags-row">
+        <div class="stream-tags">${(s.tags || []).map(t => `<span>#${esc(t)}</span>`).join('')}</div>
+        ${isPrivate ? `<button class="edit-btn" data-edit="stream" data-id="${s.id}">edit</button><button class="delete-btn" data-delete="stream" data-id="${s.id}">delete</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  $("#addStreamBtn").classList.toggle("visible", isPrivate);
+}
+
+function renderWriting() {
+  const items = WRITING.filter(show);
+  const el = $("#writingList");
+  el.innerHTML = items.map((w, i) => `
+    <div class="writing-entry" style="animation-delay: ${i * 0.06}s; position:relative;">
+      <h3 class="writing-title">
+        ${w.draft ? '<span class="draft-tag">draft</span>' : ''}${w.private ? '<span class="private-tag">private</span>' : ''}${esc(w.title)}
+      </h3>
+      <div class="writing-summary">${marked.parse(w.summary)}</div>
+      ${(w.tags || []).length ? `<div class="stream-tags" style="margin-bottom:6px;">${(w.tags || []).map(t => `<span>#${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="writing-meta-row">
+        <div class="writing-meta">
+          <span>${fmtDate(w.date)}</span>
+          <span>·</span>
+          <span>${esc(w.readTime || w.read_time)}</span>
+        </div>
+        ${isPrivate ? `<button class="edit-btn" data-edit="writing" data-id="${w.id}">edit</button><button class="delete-btn" data-delete="writing" data-id="${w.id}">delete</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  $("#addWritingBtn").classList.toggle("visible", isPrivate);
+}
+
+function renderHighlights() {
+  const items = HIGHLIGHTS.filter(show);
+  const el = $("#highlightsList");
+  el.innerHTML = items.map((h, i) => `
+    <div class="highlight-entry" style="animation-delay: ${i * 0.08}s">
+      <div class="timeline-dot" style="background: ${h.color}; box-shadow: 0 0 0 1px ${h.color}40;"></div>
+      <span class="highlight-date">${fmtDate(h.date)}</span>
+      <div class="highlight-image" style="background: linear-gradient(135deg, ${h.color}30, ${h.color}10);">
+        photo placeholder
+      </div>
+      <h3 class="highlight-title">
+        ${h.draft ? '<span class="draft-tag">draft</span>' : ''}${h.private ? '<span class="private-tag">private</span>' : ''}${esc(h.title)}
+      </h3>
+      <div class="highlight-desc-row">
+        <p class="highlight-desc">${esc(h.desc || h.description)}</p>
+        ${isPrivate ? `<button class="edit-btn" data-edit="highlights" data-id="${h.id}">edit</button><button class="delete-btn" data-delete="highlights" data-id="${h.id}">delete</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  $("#addHighlightBtn").classList.toggle("visible", isPrivate);
+}
+
+function renderColorPicker() {
+  const el = $("#colorPicker");
+  el.innerHTML = COLORS.map(c => `
+    <div data-color="${c}" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;
+      border:2px solid ${c === selectedColor ? 'var(--text-primary)' : 'transparent'};transition:border-color 0.2s;">
+    </div>
+  `).join('');
+  el.querySelectorAll('[data-color]').forEach(dot => {
+    dot.addEventListener('click', () => {
+      selectedColor = dot.dataset.color;
+      renderColorPicker();
+    });
+  });
+}
+
+function renderPrivate() {
+  if (isPrivate) {
+    $("#privateLocked").style.display = "none";
+    $("#privateUnlocked").style.display = "block";
+    $("#privateBadge").classList.add("visible");
+  } else {
+    $("#privateLocked").style.display = "block";
+    $("#privateUnlocked").style.display = "none";
+    $("#privateBadge").classList.remove("visible");
+    $("#passwordInput").value = "";
+    $("#errorMsg").classList.remove("visible");
+    $("#passwordInput").classList.remove("error");
+    $$('.editor-panel').forEach(p => p.classList.remove('visible'));
+    $$('.add-btn').forEach(b => b.classList.remove('visible'));
+  }
+}
+
+function renderAll() {
+  renderRecent();
+  renderStream();
+  renderWriting();
+  renderHighlights();
+  renderPrivate();
+  renderColorPicker();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+
+function navigate(page) {
+  currentPage = page;
+  $$('.page').forEach(p => p.classList.remove('active'));
+  $(`#page-${page}`).classList.add('active');
+  $$('nav button[data-page]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.page === page);
+  });
+  if (page === "stream") renderStream();
+  if (page === "writing") renderWriting();
+  if (page === "highlights") renderHighlights();
+  if (page === "private") renderPrivate();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EDITOR LOGIC — writes to Supabase
+// ═══════════════════════════════════════════════════════════
+
+// Format toolbar — inserts Markdown syntax around selected text
+document.querySelectorAll('.format-toolbar button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const fmt = btn.dataset.fmt;
+    const ta = btn.closest('.editor-panel').querySelector('textarea');
+    if (!ta) return;
+    ta.focus();
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const sel = ta.value.substring(start, end);
+    let replacement = '';
+    if (fmt === 'bold') {
+      replacement = `**${sel || '粗體文字'}**`;
+    } else if (fmt === 'heading') {
+      replacement = `### ${sel || '重點標題'}`;
+    }
+    ta.setRangeText(replacement, start, end, 'end');
+  });
+});
+
+// Edit state tracking
+let editingStreamId = null;
+let editingWritingId = null;
+let editingHighlightId = null;
+
+function clearStreamEditor() {
+  editingStreamId = null;
+  $("#edStreamContent").value = ""; $("#edStreamTags").value = ""; $("#edStreamPrivate").checked = false;
+  $("#saveStream").textContent = "Publish";
+}
+function clearWritingEditor() {
+  editingWritingId = null;
+  $("#edWritingTitle").value = ""; $("#edWritingSummary").value = ""; $("#edWritingTags").value = ""; $("#edWritingTime").value = ""; $("#edWritingPrivate").checked = false;
+  $("#saveWriting").textContent = "Publish";
+}
+function clearHighlightEditor() {
+  editingHighlightId = null;
+  $("#edHighTitle").value = ""; $("#edHighDesc").value = ""; $("#edHighPrivate").checked = false;
+  $("#saveHighlight").textContent = "Save";
+}
+
+// Tag autocomplete (reusable for Stream + Writing)
+function getAllUsedTags() {
+  const tags = new Set();
+  STREAM.forEach(s => (s.tags || []).forEach(t => tags.add(t)));
+  WRITING.forEach(w => (w.tags || []).forEach(t => tags.add(t)));
+  return [...tags].sort();
+}
+
+function setupTagAutocomplete(inputEl, suggestEl) {
+  let idx = -1;
+
+  function showSuggestions() {
+    const parts = inputEl.value.split(',');
+    const current = parts[parts.length - 1].trim().toLowerCase();
+    if (!current) { suggestEl.classList.remove('visible'); return; }
+    const already = parts.slice(0, -1).map(t => t.trim().toLowerCase());
+    const matches = getAllUsedTags().filter(t =>
+      t.toLowerCase().includes(current) && !already.includes(t.toLowerCase())
+    );
+    if (matches.length === 0) { suggestEl.classList.remove('visible'); return; }
+    idx = -1;
+    suggestEl.innerHTML = matches.map(t =>
+      `<div class="tag-suggest-item" data-tag="${esc(t)}">${esc(t)}</div>`
+    ).join('');
+    suggestEl.classList.add('visible');
+  }
+
+  function pick(tag) {
+    const parts = inputEl.value.split(',').map(t => t.trim()).filter(Boolean);
+    parts[parts.length - 1] = tag;
+    inputEl.value = parts.join(', ') + ', ';
+    suggestEl.classList.remove('visible');
+    inputEl.focus();
+  }
+
+  inputEl.addEventListener('input', showSuggestions);
+  inputEl.addEventListener('keydown', (e) => {
+    if (!suggestEl.classList.contains('visible')) return;
+    const items = suggestEl.querySelectorAll('.tag-suggest-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      idx = Math.min(idx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('active', i === idx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      idx = Math.max(idx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('active', i === idx));
+    } else if (e.key === 'Enter' && idx >= 0) {
+      e.preventDefault();
+      pick(items[idx].dataset.tag);
+    } else if (e.key === 'Escape') {
+      suggestEl.classList.remove('visible');
+    }
+  });
+  suggestEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.tag-suggest-item');
+    if (item) pick(item.dataset.tag);
+  });
+}
+
+setupTagAutocomplete($("#edStreamTags"), $("#tagSuggest"));
+setupTagAutocomplete($("#edWritingTags"), $("#tagSuggestWriting"));
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.tag-suggest') && !e.target.closest('input[id*="Tags"]')) {
+    $$('.tag-suggest').forEach(el => el.classList.remove('visible'));
+  }
+});
+
+// Stream
+$("#addStreamBtn").addEventListener('click', () => {
+  clearStreamEditor();
+  $("#streamEditor").classList.toggle('visible');
+  if ($("#streamEditor").classList.contains('visible')) $("#edStreamContent").focus();
+});
+$("#cancelStream").addEventListener('click', () => {
+  $("#streamEditor").classList.remove('visible');
+  clearStreamEditor();
+});
+
+async function saveStreamEntry(isDraft) {
+  const content = $("#edStreamContent").value.trim();
+  if (!content) return;
+  const tags = $("#edStreamTags").value.split(',').map(t => t.trim()).filter(Boolean);
+  let error;
+  if (editingStreamId) {
+    ({ error } = await sb.rpc('update_stream', {
+      pw: storedPassword, p_id: editingStreamId,
+      p_content: content, p_tags: tags.length ? tags : ["thoughts"],
+      p_private: $("#edStreamPrivate").checked, p_draft: isDraft,
+    }));
+  } else {
+    ({ error } = await sb.rpc('add_stream', {
+      pw: storedPassword, p_date: today(),
+      p_content: content, p_tags: tags.length ? tags : ["thoughts"],
+      p_private: $("#edStreamPrivate").checked, p_draft: isDraft,
+    }));
+  }
+  if (error) { alert('儲存失敗: ' + error.message); return; }
+  clearStreamEditor();
+  $("#streamEditor").classList.remove('visible');
+  await loadPrivateData(storedPassword);
+  renderStream(); renderRecent();
+}
+
+$("#saveStream").addEventListener('click', () => saveStreamEntry(false));
+$("#draftStream").addEventListener('click', () => saveStreamEntry(true));
+
+// Writing
+$("#addWritingBtn").addEventListener('click', () => {
+  clearWritingEditor();
+  $("#writingEditor").classList.toggle('visible');
+  if ($("#writingEditor").classList.contains('visible')) $("#edWritingTitle").focus();
+});
+$("#cancelWriting").addEventListener('click', () => {
+  $("#writingEditor").classList.remove('visible');
+  clearWritingEditor();
+});
+
+async function saveWritingEntry(isDraft) {
+  const title = $("#edWritingTitle").value.trim();
+  if (!title) return;
+  const tags = $("#edWritingTags").value.split(',').map(t => t.trim()).filter(Boolean);
+  let error;
+  if (editingWritingId) {
+    ({ error } = await sb.rpc('update_writing', {
+      pw: storedPassword, p_id: editingWritingId,
+      p_title: title, p_summary: $("#edWritingSummary").value.trim(),
+      p_read_time: $("#edWritingTime").value.trim() || "3 min",
+      p_tags: tags.length ? tags : [],
+      p_private: $("#edWritingPrivate").checked, p_draft: isDraft,
+    }));
+  } else {
+    ({ error } = await sb.rpc('add_writing', {
+      pw: storedPassword, p_date: today(),
+      p_title: title, p_summary: $("#edWritingSummary").value.trim(),
+      p_read_time: $("#edWritingTime").value.trim() || "3 min",
+      p_tags: tags.length ? tags : [],
+      p_private: $("#edWritingPrivate").checked, p_draft: isDraft,
+    }));
+  }
+  if (error) { alert('儲存失敗: ' + error.message); return; }
+  clearWritingEditor();
+  $("#writingEditor").classList.remove('visible');
+  await loadPrivateData(storedPassword);
+  renderWriting(); renderRecent();
+}
+
+$("#saveWriting").addEventListener('click', () => saveWritingEntry(false));
+$("#draftWriting").addEventListener('click', () => saveWritingEntry(true));
+
+// Highlights
+$("#addHighlightBtn").addEventListener('click', () => {
+  clearHighlightEditor();
+  $("#highlightEditor").classList.toggle('visible');
+  if ($("#highlightEditor").classList.contains('visible')) $("#edHighTitle").focus();
+});
+$("#cancelHighlight").addEventListener('click', () => {
+  $("#highlightEditor").classList.remove('visible');
+  clearHighlightEditor();
+});
+$("#saveHighlight").addEventListener('click', async () => {
+  const title = $("#edHighTitle").value.trim();
+  if (!title) return;
+  let error;
+  if (editingHighlightId) {
+    ({ error } = await sb.rpc('update_highlight', {
+      pw: storedPassword, p_id: editingHighlightId,
+      p_title: title, p_description: $("#edHighDesc").value.trim(),
+      p_color: selectedColor, p_private: $("#edHighPrivate").checked,
+    }));
+  } else {
+    ({ error } = await sb.rpc('add_highlight', {
+      pw: storedPassword, p_date: today(),
+      p_title: title, p_description: $("#edHighDesc").value.trim(),
+      p_color: selectedColor, p_private: $("#edHighPrivate").checked,
+    }));
+  }
+  if (error) { alert('儲存失敗: ' + error.message); return; }
+  clearHighlightEditor();
+  $("#highlightEditor").classList.remove('visible');
+  await loadPrivateData(storedPassword);
+  renderHighlights(); renderRecent();
+});
+
+// Edit — populate editor with existing entry data
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-edit]');
+  if (!btn) return;
+  const type = btn.dataset.edit;
+  const id = parseInt(btn.dataset.id);
+
+  if (type === 'stream') {
+    const item = STREAM.find(s => s.id === id);
+    if (!item) return;
+    editingStreamId = id;
+    $("#edStreamContent").value = item.content;
+    $("#edStreamTags").value = (item.tags || []).join(', ');
+    $("#edStreamPrivate").checked = !!item.private;
+    $("#saveStream").textContent = "Update";
+    $("#streamEditor").classList.add('visible');
+    $("#edStreamContent").focus();
+  } else if (type === 'writing') {
+    const item = WRITING.find(w => w.id === id);
+    if (!item) return;
+    editingWritingId = id;
+    $("#edWritingTitle").value = item.title;
+    $("#edWritingSummary").value = item.summary;
+    $("#edWritingTags").value = (item.tags || []).join(', ');
+    $("#edWritingTime").value = item.readTime || item.read_time || '';
+    $("#edWritingPrivate").checked = !!item.private;
+    $("#saveWriting").textContent = "Update";
+    $("#writingEditor").classList.add('visible');
+    $("#edWritingTitle").focus();
+  } else if (type === 'highlights') {
+    const item = HIGHLIGHTS.find(h => h.id === id);
+    if (!item) return;
+    editingHighlightId = id;
+    $("#edHighTitle").value = item.title;
+    $("#edHighDesc").value = item.desc || item.description || '';
+    $("#edHighPrivate").checked = !!item.private;
+    selectedColor = item.color;
+    renderColorPicker();
+    $("#saveHighlight").textContent = "Update";
+    $("#highlightEditor").classList.add('visible');
+    $("#edHighTitle").focus();
+  }
+});
+
+// Delete
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-delete]');
+  if (!btn) return;
+  if (!confirm('確定要刪除嗎？')) return;
+  const type = btn.dataset.delete;
+  const id = parseInt(btn.dataset.id);
+  const fnName = 'delete_' + (type === 'highlights' ? 'highlight' : type);
+  const { error } = await sb.rpc(fnName, { pw: storedPassword, p_id: id });
+  if (error) { alert('刪除失敗: ' + error.message); return; }
+  await loadPrivateData(storedPassword);
+  renderAll();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  DATA EXPORT (backup)
+// ═══════════════════════════════════════════════════════════
+
+$("#exportBtn").addEventListener('click', () => {
+  const data = JSON.stringify({ stream: STREAM, writing: WRITING, highlights: HIGHLIGHTS }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `unwind-backup-${today()}.json`; a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ═══════════════════════════════════════════════════════════
+//  GENERAL EVENTS
+// ═══════════════════════════════════════════════════════════
+
+// Nav
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('nav [data-page], .nav-btn[data-page], .recent-item[data-nav]');
+  if (!btn) return;
+  const page = btn.dataset.page || btn.dataset.nav;
+  if (page) navigate(page);
+});
+
+// Password visibility toggle
+$("#pwToggle").addEventListener('click', () => {
+  const input = $("#passwordInput");
+  const isPassword = input.type === "password";
+  input.type = isPassword ? "text" : "password";
+  $("#eyeOpen").style.display = isPassword ? "none" : "block";
+  $("#eyeClosed").style.display = isPassword ? "block" : "none";
+});
+
+// Unlock — verifies password against Supabase
+$("#unlockBtn").addEventListener('click', tryUnlock);
+$("#passwordInput").addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') tryUnlock();
+  else {
+    $("#errorMsg").classList.remove("visible");
+    $("#passwordInput").classList.remove("error");
+  }
+});
+
+async function tryUnlock() {
+  const pw = $("#passwordInput").value;
+  $("#unlockBtn").textContent = "Unlocking...";
+  try {
+    await loadPrivateData(pw);
+    storedPassword = pw;
+    isPrivate = true;
+    renderAll();
+  } catch (err) {
+    $("#errorMsg").classList.add("visible");
+    $("#passwordInput").classList.add("error");
+  }
+  $("#unlockBtn").textContent = "Unlock";
+}
+
+// Lock — reload public data only
+$("#lockBtn").addEventListener('click', async () => {
+  isPrivate = false;
+  storedPassword = "";
+  await loadPublicData();
+  renderAll();
+});
+
+// Theme
+$("#themeToggle").addEventListener('click', () => {
+  document.documentElement.classList.toggle('dark');
+  const isDark = document.documentElement.classList.contains('dark');
+  $("#themeToggle").textContent = isDark ? "Light" : "Dark";
+});
+
+// ═══════════════════════════════════════════════════════════
+//  INIT — load public data from Supabase
+// ═══════════════════════════════════════════════════════════
+
+(async () => {
+  await loadPublicData();
+  renderAll();
+})();
+</script>
+</body>
+</html>
