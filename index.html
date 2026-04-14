@@ -296,6 +296,46 @@
     .stream-tags span {
       font-size: 12px;
       color: var(--text-tertiary);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .stream-tags span:hover {
+      color: var(--text-primary);
+    }
+
+    /* ─── Tag Page ─── */
+    .tag-result-item {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      animation: fadeIn 0.3s ease both;
+    }
+    .tag-result-type {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+    .tag-result-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+    .tag-result-preview {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .tag-result-date {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+    .tag-result-tags { margin-top: 6px; }
+
+    /* ─── Graph ─── */
+    #graphCanvas {
+      background: var(--bg);
     }
 
     .tag-suggest {
@@ -856,6 +896,7 @@
         <button class="nav-btn" data-page="stream">All Thoughts →</button>
         <button class="nav-btn" data-page="writing">All Writing →</button>
         <button class="nav-btn" data-page="highlights">All Highlights →</button>
+        <button class="nav-btn" data-page="graph">Graph View →</button>
       </div>
     </div>
 
@@ -992,6 +1033,35 @@
         <div class="data-actions">
           <button class="data-btn" id="exportBtn">Export JSON</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ TAG PAGE ═══════════════ -->
+    <div class="page" id="page-tag">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="tagPageTitle">#tag</h1>
+          <p class="page-subtitle" id="tagPageCount"></p>
+        </div>
+        <button class="nav-btn" data-page="graph" style="font-size:13px;">Graph View →</button>
+      </div>
+      <div id="tagPageList"></div>
+    </div>
+
+    <!-- ═══════════════ GRAPH VIEW ═══════════════ -->
+    <div class="page" id="page-graph">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Graph</h1>
+          <p class="page-subtitle">內容之間的連結關係</p>
+        </div>
+      </div>
+      <canvas id="graphCanvas" width="640" height="500" style="width:100%;border:1px solid var(--border);border-radius:12px;cursor:grab;"></canvas>
+      <div id="graphLegend" style="display:flex;gap:16px;margin-top:12px;font-size:13px;color:var(--text-tertiary);">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a90d9;margin-right:4px;"></span>想法</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e85d75;margin-right:4px;"></span>文章</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f5a623;margin-right:4px;"></span>時刻</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-tertiary);margin-right:4px;"></span>tag</span>
       </div>
     </div>
 
@@ -1143,7 +1213,7 @@ function renderStream() {
         <span class="entry-date">${fmtShort(s.date)}</span>
       </div>
       <div class="stream-tags-row">
-        <div class="stream-tags">${(s.tags || []).map(t => `<span>#${esc(t)}</span>`).join('')}</div>
+        <div class="stream-tags">${(s.tags || []).map(t => `<span onclick="navigateToTag('${esc(t)}')">#${esc(t)}</span>`).join('')}</div>
         ${isPrivate ? `<button class="edit-btn" data-edit="stream" data-id="${s.id}">edit</button><button class="delete-btn" data-delete="stream" data-id="${s.id}">delete</button>` : ''}
       </div>
     </div>
@@ -1161,7 +1231,7 @@ function renderWriting() {
         ${w.draft ? '<span class="draft-tag">draft</span>' : ''}${w.private ? '<span class="private-tag">private</span>' : ''}${esc(w.title)}
       </h3>
       <div class="writing-summary">${marked.parse(w.summary)}</div>
-      ${(w.tags || []).length ? `<div class="stream-tags" style="margin-bottom:6px;">${(w.tags || []).map(t => `<span>#${esc(t)}</span>`).join('')}</div>` : ''}
+      ${(w.tags || []).length ? `<div class="stream-tags" style="margin-bottom:6px;">${(w.tags || []).map(t => `<span onclick="navigateToTag('${esc(t)}')">#${esc(t)}</span>`).join('')}</div>` : ''}
       <div class="writing-meta-row">
         <div class="writing-meta">
           <span>${fmtDate(w.date)}</span>
@@ -1255,7 +1325,249 @@ function navigate(page) {
   if (page === "writing") renderWriting();
   if (page === "highlights") renderHighlights();
   if (page === "private") renderPrivate();
+  if (page === "graph") renderGraph();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function navigateToTag(tag) {
+  currentPage = "tag";
+  $$('.page').forEach(p => p.classList.remove('active'));
+  $("#page-tag").classList.add('active');
+  $$('nav button[data-page]').forEach(btn => btn.classList.remove('active'));
+  renderTagPage(tag);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TAG PAGE
+// ═══════════════════════════════════════════════════════════
+
+function renderTagPage(tag) {
+  $("#tagPageTitle").textContent = `#${tag}`;
+
+  const streams = STREAM.filter(show).filter(s => (s.tags || []).includes(tag));
+  const writings = WRITING.filter(show).filter(w => (w.tags || []).includes(tag));
+
+  const allItems = [
+    ...streams.map(s => ({ type: '想法', date: s.date, content: stripMd(s.content).slice(0, 120), tags: s.tags || [], raw: s })),
+    ...writings.map(w => ({ type: '文章', date: w.date, content: w.title, preview: stripMd(w.summary).slice(0, 100), tags: w.tags || [], raw: w })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  $("#tagPageCount").textContent = `${allItems.length} 篇內容`;
+
+  const el = $("#tagPageList");
+  el.innerHTML = allItems.map((item, i) => `
+    <div class="tag-result-item" style="animation-delay:${i * 0.05}s">
+      <div class="tag-result-type">${item.type}</div>
+      <div class="tag-result-title">${esc(item.content)}</div>
+      ${item.preview ? `<div class="tag-result-preview">${esc(item.preview)}…</div>` : ''}
+      <div class="tag-result-date">${fmtDate(item.date)}</div>
+      <div class="tag-result-tags stream-tags">${item.tags.map(t =>
+        `<span onclick="navigateToTag('${esc(t)}')">#${esc(t)}</span>`
+      ).join('')}</div>
+    </div>
+  `).join('') || '<p style="color:var(--text-tertiary);padding:24px 0;">沒有找到相關內容。</p>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GRAPH VIEW — force-directed network
+// ═══════════════════════════════════════════════════════════
+
+function renderGraph() {
+  const canvas = $("#graphCanvas");
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth;
+  const H = 500;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+
+  // Build nodes & edges
+  const nodes = [];
+  const edges = [];
+  const tagMap = {};
+
+  const colorMap = { stream: '#4a90d9', writing: '#e85d75', highlight: '#f5a623', tag: '#999' };
+
+  // Add content nodes
+  STREAM.filter(show).forEach(s => {
+    const id = 's_' + s.id;
+    nodes.push({ id, label: stripMd(s.content).slice(0, 20), type: 'stream', tags: s.tags || [], x: W/2 + (Math.random()-0.5)*300, y: H/2 + (Math.random()-0.5)*300, vx: 0, vy: 0 });
+  });
+  WRITING.filter(show).forEach(w => {
+    const id = 'w_' + w.id;
+    nodes.push({ id, label: w.title.slice(0, 20), type: 'writing', tags: w.tags || [], x: W/2 + (Math.random()-0.5)*300, y: H/2 + (Math.random()-0.5)*300, vx: 0, vy: 0 });
+  });
+  HIGHLIGHTS.filter(show).forEach(h => {
+    const id = 'h_' + h.id;
+    nodes.push({ id, label: h.title.slice(0, 20), type: 'highlight', tags: [], x: W/2 + (Math.random()-0.5)*300, y: H/2 + (Math.random()-0.5)*300, vx: 0, vy: 0 });
+  });
+
+  // Add tag nodes & edges
+  nodes.forEach(n => {
+    (n.tags || []).forEach(tag => {
+      if (!tagMap[tag]) {
+        tagMap[tag] = { id: 't_' + tag, label: '#' + tag, type: 'tag', tags: [], x: W/2 + (Math.random()-0.5)*200, y: H/2 + (Math.random()-0.5)*200, vx: 0, vy: 0 };
+        nodes.push(tagMap[tag]);
+      }
+      edges.push({ source: n, target: tagMap[tag] });
+    });
+  });
+
+  if (nodes.length === 0) {
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-tertiary');
+    ctx.font = '14px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('還沒有足夠的內容來建立連結圖', W/2, H/2);
+    return;
+  }
+
+  // Force simulation
+  let hoveredNode = null;
+  let dragNode = null;
+  let animId;
+
+  function simulate() {
+    // repulsion between all nodes
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        let dx = nodes[j].x - nodes[i].x;
+        let dy = nodes[j].y - nodes[i].y;
+        let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+        let force = 800 / (dist * dist);
+        let fx = dx / dist * force;
+        let fy = dy / dist * force;
+        nodes[i].vx -= fx; nodes[i].vy -= fy;
+        nodes[j].vx += fx; nodes[j].vy += fy;
+      }
+    }
+
+    // attraction along edges
+    edges.forEach(e => {
+      let dx = e.target.x - e.source.x;
+      let dy = e.target.y - e.source.y;
+      let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      let force = (dist - 80) * 0.02;
+      let fx = dx / dist * force;
+      let fy = dy / dist * force;
+      e.source.vx += fx; e.source.vy += fy;
+      e.target.vx -= fx; e.target.vy -= fy;
+    });
+
+    // center gravity
+    nodes.forEach(n => {
+      n.vx += (W/2 - n.x) * 0.001;
+      n.vy += (H/2 - n.y) * 0.001;
+      n.vx *= 0.9; n.vy *= 0.9;
+      if (n !== dragNode) {
+        n.x += n.vx; n.y += n.vy;
+      }
+      n.x = Math.max(20, Math.min(W-20, n.x));
+      n.y = Math.max(20, Math.min(H-20, n.y));
+    });
+
+    draw();
+    animId = requestAnimationFrame(simulate);
+  }
+
+  function draw() {
+    const style = getComputedStyle(document.documentElement);
+    const bg = style.getPropertyValue('--bg').trim();
+    const textPrimary = style.getPropertyValue('--text-primary').trim();
+    const textTertiary = style.getPropertyValue('--text-tertiary').trim();
+    const border = style.getPropertyValue('--border').trim();
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw edges
+    edges.forEach(e => {
+      ctx.beginPath();
+      ctx.moveTo(e.source.x, e.source.y);
+      ctx.lineTo(e.target.x, e.target.y);
+      ctx.strokeStyle = border;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    });
+
+    // Draw nodes
+    nodes.forEach(n => {
+      const isTag = n.type === 'tag';
+      const r = isTag ? 6 : (n === hoveredNode ? 7 : 5);
+      const color = n === hoveredNode ? textPrimary : (isTag ? textTertiary : colorMap[n.type]);
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Label
+      if (n === hoveredNode || isTag) {
+        ctx.font = isTag ? 'bold 11px Inter, sans-serif' : '11px Inter, sans-serif';
+        ctx.fillStyle = textPrimary;
+        ctx.textAlign = 'center';
+        ctx.fillText(n.label, n.x, n.y - r - 5);
+      }
+    });
+  }
+
+  // Mouse interaction
+  function getNode(mx, my) {
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const dx = mx - n.x, dy = my - n.y;
+      if (dx*dx + dy*dy < 144) return n;
+    }
+    return null;
+  }
+
+  function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const { x, y } = getMousePos(e);
+    if (dragNode) {
+      dragNode.x = x; dragNode.y = y;
+      dragNode.vx = 0; dragNode.vy = 0;
+    }
+    const n = getNode(x, y);
+    hoveredNode = n;
+    canvas.style.cursor = n ? 'pointer' : 'grab';
+  });
+
+  canvas.addEventListener('mousedown', (e) => {
+    const { x, y } = getMousePos(e);
+    dragNode = getNode(x, y);
+    if (dragNode) canvas.style.cursor = 'grabbing';
+  });
+
+  canvas.addEventListener('mouseup', () => {
+    if (dragNode) canvas.style.cursor = 'pointer';
+    dragNode = null;
+  });
+
+  canvas.addEventListener('click', (e) => {
+    const { x, y } = getMousePos(e);
+    const n = getNode(x, y);
+    if (n && n.type === 'tag') {
+      cancelAnimationFrame(animId);
+      navigateToTag(n.label.replace('#', ''));
+    }
+  });
+
+  // Start
+  simulate();
+
+  // Cleanup when leaving page
+  const obs = new MutationObserver(() => {
+    if (!$("#page-graph").classList.contains('active')) {
+      cancelAnimationFrame(animId);
+      obs.disconnect();
+    }
+  });
+  obs.observe($("#page-graph"), { attributes: true, attributeFilter: ['class'] });
 }
 
 // ═══════════════════════════════════════════════════════════
