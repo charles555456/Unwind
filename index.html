@@ -911,6 +911,27 @@
       color: var(--text-tertiary);
       margin-bottom: 8px;
     }
+    .auto-suggest-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 10px 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .auto-suggest-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .auto-suggest-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 10px 0;
+    }
     .material-sidebar .highlight-item {
       font-size: 13px;
       padding: 8px 10px;
@@ -1072,6 +1093,11 @@
         <button class="material-toggle" id="materialToggle">📖 書摘素材庫</button>
         <div class="material-sidebar" id="materialSidebar">
           <h4>書摘素材</h4>
+          <div id="autoSuggestSection" style="display:none;">
+            <div class="auto-suggest-label">自動推薦</div>
+            <div id="autoSuggestList"></div>
+            <div class="auto-suggest-divider"></div>
+          </div>
           <input type="text" class="reading-search" id="materialSearch" placeholder="搜尋書摘...">
           <div id="materialList"></div>
         </div>
@@ -2139,6 +2165,119 @@ function renderMaterial(query = '') {
 
 // Material sidebar search
 $("#materialSearch").addEventListener('input', (e) => renderMaterial(e.target.value));
+
+// ═══════════════════════════════════════════════════════════
+//  AUTO-SUGGEST — detect keywords while writing
+// ═══════════════════════════════════════════════════════════
+
+const CJK_RANGE = /[\u4e00-\u9fff\u3400-\u4dbf]/;
+const STOP_CHARS = new Set('的了是在不有我他她它這那個也就都而且但因為所以如果沒可以會被把讓從到和與及或者等對還很大小多少上下裡面時候什麼怎麼為什麼一二三四五六七八九十'.split(''));
+
+function extractKeywords(text) {
+  if (!text || text.length < 2) return [];
+  const keywords = new Set();
+
+  // Extract CJK n-grams (2-4 chars)
+  const chars = text.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9\s]/g, '');
+  const cjkChars = [];
+  for (const ch of chars) {
+    if (CJK_RANGE.test(ch) && !STOP_CHARS.has(ch)) {
+      cjkChars.push(ch);
+    } else {
+      // Process accumulated CJK characters
+      if (cjkChars.length >= 2) {
+        for (let n = 2; n <= Math.min(4, cjkChars.length); n++) {
+          for (let i = 0; i <= cjkChars.length - n; i++) {
+            keywords.add(cjkChars.slice(i, i + n).join(''));
+          }
+        }
+      }
+      cjkChars.length = 0;
+    }
+  }
+  // Don't forget remaining CJK chars
+  if (cjkChars.length >= 2) {
+    for (let n = 2; n <= Math.min(4, cjkChars.length); n++) {
+      for (let i = 0; i <= cjkChars.length - n; i++) {
+        keywords.add(cjkChars.slice(i, i + n).join(''));
+      }
+    }
+  }
+
+  // Extract English words (3+ chars)
+  const engWords = text.toLowerCase().match(/[a-zA-Z]{3,}/g) || [];
+  engWords.forEach(w => keywords.add(w));
+
+  return [...keywords];
+}
+
+function scoreHighlight(highlightText, keywords) {
+  if (!highlightText || keywords.length === 0) return 0;
+  const lower = highlightText.toLowerCase();
+  let score = 0;
+  const matched = new Set();
+  for (const kw of keywords) {
+    if (lower.includes(kw.toLowerCase())) {
+      score += kw.length; // Longer matches count more
+      matched.add(kw);
+    }
+  }
+  // Bonus for matching multiple different keywords
+  if (matched.size > 1) score *= (1 + matched.size * 0.2);
+  return score;
+}
+
+function autoSuggestHighlights(text) {
+  const keywords = extractKeywords(text);
+  if (keywords.length === 0) {
+    $("#autoSuggestSection").style.display = 'none';
+    return;
+  }
+
+  // Score all highlights
+  const scored = [];
+  BOOKS.forEach(book => {
+    book.highlights.forEach(h => {
+      const s = scoreHighlight(h.text, keywords) + scoreHighlight(h.chapter || '', keywords) * 0.5;
+      if (s > 0) scored.push({ ...h, bookTitle: book.title, score: s });
+    });
+  });
+
+  // Sort by score, take top 10
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 10);
+
+  const section = $("#autoSuggestSection");
+  const listEl = $("#autoSuggestList");
+
+  if (top.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  listEl.innerHTML = top.map(h => `
+    <div class="highlight-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '> ${esc(h.text)}\\n— ${esc(h.bookTitle)}')">
+      <div class="highlight-chapter">${esc(h.bookTitle)}${h.chapter ? ' · ' + esc(h.chapter) : ''}</div>
+      <div>${esc(h.text.length > 100 ? h.text.slice(0, 100) + '…' : h.text)}</div>
+    </div>
+  `).join('');
+
+  // Auto-open sidebar if it's closed
+  const sidebar = $("#materialSidebar");
+  if (!sidebar.classList.contains('open')) {
+    sidebar.classList.add('open');
+  }
+}
+
+// Debounce: wait 800ms after user stops typing
+let autoSuggestTimer = null;
+writingTextarea.addEventListener('input', () => {
+  clearTimeout(autoSuggestTimer);
+  autoSuggestTimer = setTimeout(() => {
+    autoSuggestHighlights(writingTextarea.value);
+  }, 800);
+});
 
 // Enable drop on writing textarea
 const writingTextarea = $("#edWritingSummary");
