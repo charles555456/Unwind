@@ -829,6 +829,105 @@
       color: var(--text-primary);
     }
 
+    /* ─── Reading Notes ─── */
+    .book-item {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .book-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .book-header:hover { color: var(--text-primary); }
+    .book-title-text {
+      font-weight: 500;
+      font-size: 15px;
+    }
+    .book-author {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+    .book-count {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+    }
+    .book-highlights {
+      display: none;
+      padding: 8px 0 4px;
+    }
+    .book-highlights.open { display: block; }
+    .highlight-item {
+      padding: 10px 14px;
+      margin: 6px 0;
+      background: var(--hover-bg);
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+      cursor: grab;
+    }
+    .highlight-item:active { cursor: grabbing; }
+    .highlight-chapter {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+    .highlight-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-style: italic;
+      margin-top: 4px;
+    }
+    .reading-search {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 14px;
+      margin-bottom: 16px;
+      outline: none;
+    }
+    .reading-search:focus { border-color: var(--text-tertiary); }
+
+    /* ─── Material Sidebar ─── */
+    .material-sidebar {
+      display: none;
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .material-sidebar.open { display: block; }
+    .material-sidebar h4 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+    }
+    .material-sidebar .highlight-item {
+      font-size: 13px;
+      padding: 8px 10px;
+      margin: 4px 0;
+    }
+    .material-toggle {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .material-toggle:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+
     /* ─── Footer ─── */
     footer {
       margin-top: 80px;
@@ -873,6 +972,7 @@
       <button data-page="stream">Stream</button>
       <button data-page="writing">Writing</button>
       <button data-page="highlights">Highlights</button>
+      <button data-page="reading">Reading</button>
       <div class="nav-spacer"></div>
       <span class="private-badge" id="privateBadge">Private Mode</span>
       <button data-page="private" title="Private">○</button>
@@ -969,6 +1069,12 @@
             <span>Private</span>
           </div>
         </div>
+        <button class="material-toggle" id="materialToggle">📖 書摘素材庫</button>
+        <div class="material-sidebar" id="materialSidebar">
+          <h4>書摘素材</h4>
+          <input type="text" class="reading-search" id="materialSearch" placeholder="搜尋書摘...">
+          <div id="materialList"></div>
+        </div>
       </div>
       <div id="writingList"></div>
     </div>
@@ -1034,6 +1140,18 @@
           <button class="data-btn" id="exportBtn">Export JSON</button>
         </div>
       </div>
+    </div>
+
+    <!-- ═══════════════ READING NOTES ═══════════════ -->
+    <div class="page" id="page-reading">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Reading Notes</h1>
+          <p class="page-subtitle" id="readingSubtitle">Kobo 書摘</p>
+        </div>
+      </div>
+      <input type="text" class="reading-search" id="readingSearch" placeholder="搜尋書名或書摘內容...">
+      <div id="readingList"></div>
     </div>
 
     <!-- ═══════════════ TAG PAGE ═══════════════ -->
@@ -1326,6 +1444,7 @@ function navigate(page) {
   if (page === "highlights") renderHighlights();
   if (page === "private") renderPrivate();
   if (page === "graph") renderGraph();
+  if (page === "reading") renderReading();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1933,11 +2052,129 @@ $("#themeToggle").addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════
+//  READING NOTES — Kobo highlights
+// ═══════════════════════════════════════════════════════════
+
+let BOOKS = [];
+
+async function loadReadingNotes() {
+  try {
+    const res = await fetch('kobo-highlights.json');
+    if (res.ok) BOOKS = await res.json();
+  } catch(e) { console.log('No reading notes found'); }
+}
+
+function renderReading(query = '') {
+  const q = query.toLowerCase();
+  const filtered = q
+    ? BOOKS.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.highlights.some(h => h.text.toLowerCase().includes(q)))
+    : BOOKS;
+
+  const totalHighlights = filtered.reduce((s, b) => s + b.highlights.length, 0);
+  $("#readingSubtitle").textContent = `${filtered.length} 本書 · ${totalHighlights} 條書摘`;
+
+  const el = $("#readingList");
+  el.innerHTML = filtered.map((book, bi) => {
+    const highlights = q
+      ? book.highlights.filter(h => h.text.toLowerCase().includes(q) || (h.chapter || '').toLowerCase().includes(q))
+      : book.highlights;
+
+    return `
+    <div class="book-item">
+      <div class="book-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <div>
+          <div class="book-title-text">${esc(book.title)}</div>
+          ${book.author ? `<div class="book-author">${esc(book.author)}</div>` : ''}
+        </div>
+        <span class="book-count">${highlights.length} 條</span>
+      </div>
+      <div class="book-highlights${q ? ' open' : ''}">
+        ${highlights.map(h => `
+          <div class="highlight-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '> ${esc(h.text)}\\n— ${esc(book.title)}')">
+            ${h.chapter ? `<div class="highlight-chapter">${esc(h.chapter)}</div>` : ''}
+            <div>${esc(h.text)}</div>
+            ${h.note ? `<div class="highlight-note">💡 ${esc(h.note)}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('') || '<p style="color:var(--text-tertiary);padding:24px 0;">找不到相關書摘。</p>';
+}
+
+// Reading page search
+$("#readingSearch").addEventListener('input', (e) => renderReading(e.target.value));
+
+// Material sidebar toggle
+$("#materialToggle").addEventListener('click', () => {
+  const sidebar = $("#materialSidebar");
+  sidebar.classList.toggle('open');
+  if (sidebar.classList.contains('open')) renderMaterial();
+});
+
+function renderMaterial(query = '') {
+  const q = query.toLowerCase();
+  let allHighlights = [];
+  BOOKS.forEach(b => {
+    b.highlights.forEach(h => {
+      if (!q || h.text.toLowerCase().includes(q) || b.title.toLowerCase().includes(q)) {
+        allHighlights.push({ ...h, bookTitle: b.title });
+      }
+    });
+  });
+
+  // Show max 30 results
+  const shown = allHighlights.slice(0, 30);
+  const el = $("#materialList");
+  el.innerHTML = shown.map(h => `
+    <div class="highlight-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '> ${esc(h.text)}\\n— ${esc(h.bookTitle)}')">
+      <div class="highlight-chapter">${esc(h.bookTitle)}${h.chapter ? ' · ' + esc(h.chapter) : ''}</div>
+      <div>${esc(h.text.length > 100 ? h.text.slice(0, 100) + '…' : h.text)}</div>
+    </div>
+  `).join('') || '<p style="color:var(--text-tertiary);font-size:13px;">找不到。</p>';
+
+  if (allHighlights.length > 30) {
+    el.innerHTML += `<p style="color:var(--text-tertiary);font-size:12px;padding:8px 0;">還有 ${allHighlights.length - 30} 條，請搜尋縮小範圍</p>`;
+  }
+}
+
+// Material sidebar search
+$("#materialSearch").addEventListener('input', (e) => renderMaterial(e.target.value));
+
+// Enable drop on writing textarea
+const writingTextarea = $("#edWritingSummary");
+writingTextarea.addEventListener('dragover', (e) => { e.preventDefault(); writingTextarea.style.borderColor = 'var(--text-primary)'; });
+writingTextarea.addEventListener('dragleave', () => { writingTextarea.style.borderColor = ''; });
+writingTextarea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  writingTextarea.style.borderColor = '';
+  const text = e.dataTransfer.getData('text/plain');
+  const pos = writingTextarea.selectionStart;
+  const before = writingTextarea.value.substring(0, pos);
+  const after = writingTextarea.value.substring(pos);
+  writingTextarea.value = before + '\n' + text + '\n' + after;
+});
+
+// Also enable drop on stream textarea
+const streamTextarea = $("#edStreamContent");
+streamTextarea.addEventListener('dragover', (e) => { e.preventDefault(); streamTextarea.style.borderColor = 'var(--text-primary)'; });
+streamTextarea.addEventListener('dragleave', () => { streamTextarea.style.borderColor = ''; });
+streamTextarea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  streamTextarea.style.borderColor = '';
+  const text = e.dataTransfer.getData('text/plain');
+  const pos = streamTextarea.selectionStart;
+  const before = streamTextarea.value.substring(0, pos);
+  const after = streamTextarea.value.substring(pos);
+  streamTextarea.value = before + '\n' + text + '\n' + after;
+});
+
+// ═══════════════════════════════════════════════════════════
 //  INIT — load public data from Supabase
 // ═══════════════════════════════════════════════════════════
 
 (async () => {
   await loadPublicData();
+  await loadReadingNotes();
   renderAll();
 })();
 </script>
