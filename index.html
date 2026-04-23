@@ -2270,6 +2270,9 @@ function autoSuggestHighlights(text) {
   }
 }
 
+// Enable drop on writing textarea
+const writingTextarea = $("#edWritingSummary");
+
 // Debounce: wait 800ms after user stops typing
 let autoSuggestTimer = null;
 writingTextarea.addEventListener('input', () => {
@@ -2278,9 +2281,6 @@ writingTextarea.addEventListener('input', () => {
     autoSuggestHighlights(writingTextarea.value);
   }, 800);
 });
-
-// Enable drop on writing textarea
-const writingTextarea = $("#edWritingSummary");
 writingTextarea.addEventListener('dragover', (e) => { e.preventDefault(); writingTextarea.style.borderColor = 'var(--text-primary)'; });
 writingTextarea.addEventListener('dragleave', () => { writingTextarea.style.borderColor = ''; });
 writingTextarea.addEventListener('drop', (e) => {
