@@ -1078,6 +1078,7 @@
             <span>Private</span>
           </div>
         </div>
+        <button class="material-toggle" id="materialToggleStream">📖 書摘素材庫</button>
       </div>
       <div class="tag-filters" id="tagFilters"></div>
       <div id="streamList"></div>
@@ -2173,6 +2174,12 @@ $("#materialClose").addEventListener('click', () => {
   $("#materialSidebar").classList.remove('open');
 });
 
+$("#materialToggleStream").addEventListener('click', () => {
+  const sidebar = $("#materialSidebar");
+  sidebar.classList.toggle('open');
+  if (sidebar.classList.contains('open')) renderMaterial();
+});
+
 function renderMaterial(query = '') {
   const q = query.toLowerCase();
   let allHighlights = [];
@@ -2331,6 +2338,15 @@ writingTextarea.addEventListener('drop', (e) => {
 
 // Also enable drop on stream textarea
 const streamTextarea = $("#edStreamContent");
+
+// Auto-suggest for stream textarea
+streamTextarea.addEventListener('input', () => {
+  clearTimeout(autoSuggestTimer);
+  autoSuggestTimer = setTimeout(() => {
+    autoSuggestHighlights(streamTextarea.value);
+  }, 800);
+});
+
 streamTextarea.addEventListener('dragover', (e) => { e.preventDefault(); streamTextarea.style.borderColor = 'var(--text-primary)'; });
 streamTextarea.addEventListener('dragleave', () => { streamTextarea.style.borderColor = ''; });
 streamTextarea.addEventListener('drop', (e) => {
