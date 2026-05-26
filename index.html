@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Unwind — charlesshen</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1095,10 +1095,103 @@
     .theme-toggle:hover { color: var(--text-primary); }
 
     /* ─── Responsive ─── */
-    @media (max-width: 480px) {
-      nav { gap: 16px; padding: 24px 0 36px; }
+
+    /* Tablet */
+    @media (max-width: 768px) {
+      .container { padding: 0 16px 60px; }
+      nav { gap: 14px; padding: 20px 0 28px; flex-wrap: wrap; }
       nav button { font-size: 14px; }
+      .page-title { font-size: 18px; }
+      .writing-title { font-size: 22px; }
+      .stream-entry-header { gap: 12px; }
+    }
+
+    /* Mobile */
+    @media (max-width: 480px) {
+      .container { padding: 0 14px 48px; }
+      body { font-size: 14px; }
+
+      /* Nav — horizontal scroll on small screens */
+      nav {
+        gap: 12px;
+        padding: 16px 0 20px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      nav::-webkit-scrollbar { display: none; }
+      nav button { font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+
+      /* Signature */
+      .page-sig { margin-bottom: 20px; }
+      .page-sig img { width: 26px; height: 26px; }
+      .page-sig span { font-size: 13px; }
+
+      /* Landing */
+      .landing-hero h1 { font-size: 48px; }
+      .landing-hero p { font-size: 12px; }
+      .landing-tag { font-size: 12px; padding: 6px 12px; }
+      .landing-tag.tag-main { font-size: 16px; padding: 8px 16px; }
+      .landing-tag.tag-sm { font-size: 12px; padding: 6px 12px; }
+      .landing-footer { font-size: 11px; bottom: 20px; }
+
+      /* Page header */
+      .page-header { margin-bottom: 4px; }
+      .page-title { font-size: 17px; }
+      .page-subtitle { font-size: 13px; margin-bottom: 20px; }
+      .add-btn { font-size: 12px; padding: 5px 12px; }
+
+      /* Stream */
+      .stream-entry { padding: 14px 0; }
+      .stream-entry-header { gap: 8px; flex-direction: column; }
+      .stream-content { font-size: 14px; line-height: 1.7; }
+      .entry-date { font-size: 12px; padding-top: 0; }
+      .tag-filters { gap: 6px; margin-bottom: 20px; }
+      .tag-btn { padding: 3px 10px; font-size: 12px; }
+
+      /* Writing */
+      .writing-entry { padding: 16px 0; }
+      .writing-title { font-size: 20px; margin-bottom: 8px; }
+      .writing-summary { font-size: 13px; }
+      .writing-meta { font-size: 12px; gap: 8px; }
+
+      /* Highlights */
+      .timeline { padding-left: 24px; }
+      .timeline-dot { left: -21px; }
       .highlight-image { height: 140px; }
+      .highlight-title { font-size: 15px; }
+      .highlight-desc { font-size: 13px; }
+      .highlight-entry { margin-bottom: 24px; }
+
+      /* Editor */
+      .editor-panel input[type="text"],
+      .editor-panel input[type="date"],
+      .editor-panel textarea,
+      .editor-panel select { font-size: 14px; padding: 8px 10px; }
+      .editor-panel textarea { min-height: 100px; }
+      .editor-actions { gap: 6px; }
+      .editor-save, .editor-draft, .editor-cancel { font-size: 13px; padding: 7px 14px; }
+      .format-toolbar button { font-size: 12px; padding: 3px 8px; }
+
+      /* Material sidebar — full width on mobile */
+      .material-sidebar { width: 100vw; }
+
+      /* Reading */
+      .reading-search { font-size: 14px; }
+
+      /* Graph */
+      #graphCanvas { height: 320px; }
+
+      /* Private */
+      .private-form { max-width: 100%; }
+
+      /* Delete / edit buttons — always visible on touch */
+      .stream-tags-row .delete-btn,
+      .writing-meta-row .delete-btn,
+      .highlight-desc-row .delete-btn,
+      .writing-entry .edit-btn,
+      .writing-entry .delete-btn { opacity: 1 !important; }
     }
   </style>
 </head>
@@ -1572,11 +1665,16 @@ function renderAll() {
 function renderLanding() {
   const canvas = $("#landingCanvas");
   if (!canvas) return;
-  const W = canvas.offsetWidth;
-  const H = canvas.offsetHeight;
+  const isMobile = window.innerWidth <= 480;
 
-  // Pre-set positions for 5 main category tags (% of viewport)
-  const mainPositions = [
+  // Positions differ on mobile vs desktop to avoid overlap
+  const mainPositions = isMobile ? [
+    { id: 'ltStream',     x: 5,  y: 10, rot: -3 },
+    { id: 'ltWriting',    x: 55, y: 8,  rot: 2 },
+    { id: 'ltHighlights', x: 3,  y: 78, rot: 2 },
+    { id: 'ltReading',    x: 58, y: 80, rot: -2 },
+    { id: 'ltGraph',      x: 60, y: 44, rot: 4 },
+  ] : [
     { id: 'ltStream',     x: 12, y: 18, rot: -4 },
     { id: 'ltWriting',    x: 72, y: 14, rot: 3 },
     { id: 'ltHighlights', x: 8,  y: 72, rot: 2 },
@@ -1596,10 +1694,16 @@ function renderLanding() {
   const tagFreq = {};
   STREAM.filter(s => !s.private).forEach(s => (s.tags || []).forEach(t => { tagFreq[t] = (tagFreq[t] || 0) + 1; }));
   WRITING.filter(w => !w.private).forEach(w => (w.tags || []).forEach(t => { tagFreq[t] = (tagFreq[t] || 0) + 1; }));
-  const topTags = Object.entries(tagFreq).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0]);
+  const maxTags = isMobile ? 4 : 8;
+  const topTags = Object.entries(tagFreq).sort((a, b) => b[1] - a[1]).slice(0, maxTags).map(e => e[0]);
 
   // Positions for scattered user tags
-  const tagSlots = [
+  const tagSlots = isMobile ? [
+    { x: 2,  y: 38, rot: -2 },
+    { x: 50, y: 22, rot: 3 },
+    { x: 5,  y: 60, rot: 3 },
+    { x: 55, y: 64, rot: -2 },
+  ] : [
     { x: 4,  y: 44, rot: -2 },
     { x: 38, y: 8,  rot: 6 },
     { x: 55, y: 82, rot: -3 },
