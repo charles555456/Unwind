@@ -110,6 +110,16 @@
       justify-content: center;
     }
 
+    .landing-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.10;
+      pointer-events: none;
+    }
+
+    :root.dark .landing-bg { opacity: 0.18; }
+
     .landing-hero {
       text-align: center;
       z-index: 2;
@@ -124,9 +134,6 @@
       margin-bottom: 12px;
     }
 
-    .landing-hero .landing-dot {
-      color: #e85d45;
-    }
 
     .landing-hero p {
       font-size: 14px;
@@ -152,17 +159,6 @@
       text-decoration: none;
     }
 
-    .landing-tag::after {
-      content: '';
-      position: absolute;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: #e85d45;
-      right: 6px;
-      top: 6px;
-      opacity: 0.7;
-    }
 
     .landing-tag:hover {
       transform: scale(1.06) rotate(0deg) !important;
@@ -176,22 +172,15 @@
     }
 
     .landing-tag.tag-main {
-      font-size: 17px;
-      padding: 10px 22px;
+      font-size: 28px;
+      padding: 14px 32px;
       font-weight: 500;
     }
 
     .landing-tag.tag-sm {
-      font-size: 13px;
-      padding: 6px 14px;
+      font-size: 18px;
+      padding: 10px 22px;
       color: var(--text-tertiary);
-    }
-
-    .landing-tag.tag-sm::after {
-      width: 4px;
-      height: 4px;
-      right: 5px;
-      top: 5px;
     }
 
     .landing-footer {
@@ -207,9 +196,8 @@
 
     @media (max-width: 640px) {
       .landing-hero h1 { font-size: 56px; }
-      .landing-tag { font-size: 13px; padding: 6px 14px; }
-      .landing-tag.tag-main { font-size: 14px; padding: 8px 16px; }
-      .landing-tag.tag-sm { font-size: 11px; padding: 5px 10px; }
+      .landing-tag.tag-main { font-size: 20px; padding: 10px 22px; }
+      .landing-tag.tag-sm { font-size: 14px; padding: 8px 16px; }
     }
 
     .section-label {
@@ -1120,6 +1108,23 @@
     <!-- ═══════════════ HOME (Landing) ═══════════════ -->
     <div class="page active" id="page-home">
       <div class="landing" id="landingCanvas">
+        <svg class="landing-bg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" stroke="currentColor" stroke-linecap="round">
+            <path d="M180,400 C140,320 200,250 160,200 C120,150 220,160 180,120 C140,80 260,100 220,140 C180,180 300,130 260,180 C220,230 340,170 300,220 C260,270 380,210 340,260 C300,310 310,200 270,250 C230,300 350,240 310,290" stroke-width="1.2"/>
+            <path d="M200,420 C160,350 230,280 190,230 C150,180 250,190 210,150 C170,110 280,120 250,170 C220,220 320,160 290,210 C260,260 360,200 330,250 C300,300 280,230 250,280" stroke-width="0.8"/>
+            <path d="M160,380 C130,310 190,260 170,210 C150,160 240,180 200,130 C160,80 270,110 240,160 C210,210 310,150 280,200 C250,250 350,190 320,240 C290,290 260,220 240,270 C220,320 330,260 300,310" stroke-width="1"/>
+            <path d="M220,440 C170,360 250,290 200,240 C150,190 260,200 230,160 C200,120 290,140 270,190 C250,240 340,180 320,230 C300,280 370,220 350,270" stroke-width="0.6"/>
+            <path d="M190,360 C160,290 220,240 200,190 C180,140 270,170 240,130 C210,90 300,110 280,160 C260,210 350,150 330,200 C310,250 380,200 360,250 C340,300 320,250 300,300" stroke-width="1.1"/>
+            <path d="M150,410 C120,340 200,270 170,220 C140,170 250,190 220,150 C190,110 290,130 260,180 C230,230 330,170 300,220 C270,270 350,220 330,270" stroke-width="0.7"/>
+            <path d="M210,390 C180,330 240,270 210,220 C180,170 270,180 240,140 C210,100 300,130 280,170 C260,210 350,160 330,210 C310,260 370,210 350,260 C330,310 300,270 280,310" stroke-width="0.9"/>
+            <path d="M170,430 C140,370 210,300 180,250 C150,200 260,210 230,170 C200,130 290,150 270,200 C250,250 340,190 320,240" stroke-width="1.3"/>
+            <path d="M350,280 C400,270 450,290 500,280 C560,268 620,300 680,290 C740,280 800,310 860,340 C900,360 920,380 940,400 C960,420 960,440 940,450 C920,460 890,450 870,430 C850,410 840,380 850,360 C860,340 890,320 920,330 C950,340 970,370 970,400 C970,430 950,460 920,470 C890,480 860,460 840,440 C820,420 810,390 820,360" stroke-width="1.5"/>
+            <path d="M340,300 C390,290 440,310 490,300 C550,290 610,320 670,310 C730,300 790,330 850,355 C895,372 915,395 935,415 C955,435 952,455 932,462 C912,469 885,458 868,440 C851,422 845,395 855,375 C865,355 890,340 915,348 C940,356 958,380 958,410 C958,440 940,465 912,472" stroke-width="1"/>
+            <path d="M360,260 C410,255 455,275 505,265 C565,253 625,285 685,275 C745,265 810,295 870,325 C910,345 935,370 950,390 C965,410 965,435 948,445 C931,455 905,447 888,430 C871,413 860,388 868,368 C876,348 900,335 925,342 C950,349 965,375 965,405" stroke-width="0.7"/>
+            <path d="M330,320 C380,310 430,330 480,320 C540,310 600,340 660,330 C720,320 780,345 840,370 C885,388 910,408 928,428 C946,448 943,465 926,472 C909,479 885,468 870,452 C855,436 848,412 856,392 C864,372 886,358 910,365" stroke-width="1.2"/>
+          </g>
+        </svg>
+
         <div class="landing-hero">
           <h1>Unwind<span class="landing-dot">.</span></h1>
           <p>把纏在一起的問題，一條一條理開</p>
