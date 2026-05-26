@@ -98,26 +98,118 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ─── Home ─── */
-    .home-intro { margin-bottom: 64px; }
-    .home-intro h1 { font-size: 20px; font-weight: 500; margin-bottom: 16px; }
+    /* ─── Landing / Home ─── */
+    .landing {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      margin-left: calc(-50vw + 50%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-    .unwind-illustration {
-      width: 420px;
-      height: auto;
-      display: block;
-      margin: 4px 0 8px;
+    .landing-hero {
+      text-align: center;
+      z-index: 2;
+      pointer-events: none;
     }
-    .unwind-illustration-img {
-      width: 360px;
-      height: auto;
-      display: block;
-      margin: 0 0 -8px;
+
+    .landing-hero h1 {
+      font-size: clamp(60px, 12vw, 120px);
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 12px;
     }
-    .home-intro p {
+
+    .landing-hero .landing-dot {
+      color: #e85d45;
+    }
+
+    .landing-hero p {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+      font-weight: 300;
+    }
+
+    .landing-tag {
+      position: absolute;
+      background: var(--hover-bg);
+      border: 1px solid var(--border);
+      padding: 8px 18px;
+      font-size: 15px;
+      font-weight: 400;
       color: var(--text-secondary);
-      line-height: 1.75;
-      max-width: 520px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, color 0.2s;
+      z-index: 3;
+      user-select: none;
+      text-decoration: none;
+    }
+
+    .landing-tag::after {
+      content: '';
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #e85d45;
+      right: 6px;
+      top: 6px;
+      opacity: 0.7;
+    }
+
+    .landing-tag:hover {
+      transform: scale(1.06) rotate(0deg) !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      color: var(--text-primary);
+      z-index: 10;
+    }
+
+    :root.dark .landing-tag:hover {
+      box-shadow: 0 4px 20px rgba(255,255,255,0.06);
+    }
+
+    .landing-tag.tag-main {
+      font-size: 17px;
+      padding: 10px 22px;
+      font-weight: 500;
+    }
+
+    .landing-tag.tag-sm {
+      font-size: 13px;
+      padding: 6px 14px;
+      color: var(--text-tertiary);
+    }
+
+    .landing-tag.tag-sm::after {
+      width: 4px;
+      height: 4px;
+      right: 5px;
+      top: 5px;
+    }
+
+    .landing-footer {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      z-index: 2;
+      letter-spacing: 0.04em;
+    }
+
+    @media (max-width: 640px) {
+      .landing-hero h1 { font-size: 56px; }
+      .landing-tag { font-size: 13px; padding: 6px 14px; }
+      .landing-tag.tag-main { font-size: 14px; padding: 8px 16px; }
+      .landing-tag.tag-sm { font-size: 11px; padding: 5px 10px; }
     }
 
     .section-label {
@@ -1006,7 +1098,6 @@
     @media (max-width: 480px) {
       nav { gap: 16px; padding: 24px 0 36px; }
       nav button { font-size: 14px; }
-      .home-intro h1 { font-size: 18px; }
       .highlight-image { height: 140px; }
     }
   </style>
@@ -1026,25 +1117,25 @@
       <button data-page="private" title="Private">○</button>
     </nav>
 
-    <!-- ═══════════════ HOME ═══════════════ -->
+    <!-- ═══════════════ HOME (Landing) ═══════════════ -->
     <div class="page active" id="page-home">
-      <div class="home-intro">
-        <img class="unwind-illustration-img" src="illustration.png" alt="unwind illustration">
-        <h1>Unwind</h1>
-        <p style="color:var(--text-tertiary);font-size:14px;margin-bottom:16px;">by charlesshen</p>
-        <p>把纏在一起的問題，一條一條理開。這裡是我整理思考、輸出解法的地方。</p>
-      </div>
+      <div class="landing" id="landingCanvas">
+        <div class="landing-hero">
+          <h1>Unwind<span class="landing-dot">.</span></h1>
+          <p>把纏在一起的問題，一條一條理開</p>
+        </div>
 
-      <div>
-        <h2 class="section-label">Recent</h2>
-        <div id="recentList"></div>
-      </div>
+        <!-- Fixed category tags — positioned via JS -->
+        <button class="landing-tag tag-main" data-page="stream" id="ltStream">Stream</button>
+        <button class="landing-tag tag-main" data-page="writing" id="ltWriting">Writing</button>
+        <button class="landing-tag tag-main" data-page="highlights" id="ltHighlights">Highlights</button>
+        <button class="landing-tag tag-main" data-page="reading" id="ltReading">Reading</button>
+        <button class="landing-tag tag-main" data-page="graph" id="ltGraph">Graph</button>
 
-      <div class="nav-buttons">
-        <button class="nav-btn" data-page="stream">All Thoughts →</button>
-        <button class="nav-btn" data-page="writing">All Writing →</button>
-        <button class="nav-btn" data-page="highlights">All Highlights →</button>
-        <button class="nav-btn" data-page="graph">Graph View →</button>
+        <!-- Dynamic user tags will be injected here -->
+        <div id="landingTagSlots"></div>
+
+        <div class="landing-footer">by charlesshen</div>
       </div>
     </div>
 
@@ -1341,26 +1432,7 @@ function show(item) {
 // ═══════════════════════════════════════════════════════════
 
 function renderRecent() {
-  const items = [
-    ...STREAM.filter(s => !s.private).slice(0, 2).map(s => ({ type: "stream", date: s.date, text: s.content, label: "想法" })),
-    ...WRITING.filter(w => !w.private).slice(0, 1).map(w => ({ type: "writing", date: w.date, text: w.title, label: "文章" })),
-    ...HIGHLIGHTS.filter(h => !h.private).slice(0, 1).map(h => ({ type: "highlights", date: h.date, text: h.title, label: "時刻" })),
-  ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  const el = $("#recentList");
-  el.innerHTML = items.length === 0
-    ? '<p style="color:var(--text-tertiary);font-size:14px;padding:16px 0;">還沒有內容，解鎖 Private Mode 後開始新增。</p>'
-    : items.map(it => `
-    <div class="recent-item" data-nav="${it.type}">
-      <span class="recent-type">${it.label}</span>
-      <span class="recent-text">${(() => { const t = esc(stripMd(it.text)); return t.length > 80 ? t.slice(0, 80) + '…' : t; })()}</span>
-      <span class="recent-date">${fmtShort(it.date)}</span>
-    </div>
-  `).join('');
-
-  el.querySelectorAll('.recent-item').forEach(item => {
-    item.addEventListener('click', () => navigate(item.dataset.nav));
-  });
+  // Legacy — landing page replaced the recent list
 }
 
 function renderStream() {
@@ -1479,12 +1551,72 @@ function renderPrivate() {
 }
 
 function renderAll() {
-  renderRecent();
+  renderLanding();
   renderStream();
   renderWriting();
   renderHighlights();
   renderPrivate();
   renderColorPicker();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LANDING PAGE
+// ═══════════════════════════════════════════════════════════
+
+function renderLanding() {
+  const canvas = $("#landingCanvas");
+  if (!canvas) return;
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+
+  // Pre-set positions for 5 main category tags (% of viewport)
+  const mainPositions = [
+    { id: 'ltStream',     x: 12, y: 18, rot: -4 },
+    { id: 'ltWriting',    x: 72, y: 14, rot: 3 },
+    { id: 'ltHighlights', x: 8,  y: 72, rot: 2 },
+    { id: 'ltReading',    x: 75, y: 68, rot: -3 },
+    { id: 'ltGraph',      x: 78, y: 42, rot: 5 },
+  ];
+
+  mainPositions.forEach(p => {
+    const el = $(`#${p.id}`);
+    if (!el) return;
+    el.style.left = p.x + '%';
+    el.style.top = p.y + '%';
+    el.style.transform = `rotate(${p.rot}deg)`;
+  });
+
+  // Collect top user tags (by frequency)
+  const tagFreq = {};
+  STREAM.filter(s => !s.private).forEach(s => (s.tags || []).forEach(t => { tagFreq[t] = (tagFreq[t] || 0) + 1; }));
+  WRITING.filter(w => !w.private).forEach(w => (w.tags || []).forEach(t => { tagFreq[t] = (tagFreq[t] || 0) + 1; }));
+  const topTags = Object.entries(tagFreq).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0]);
+
+  // Positions for scattered user tags
+  const tagSlots = [
+    { x: 4,  y: 44, rot: -2 },
+    { x: 38, y: 8,  rot: 6 },
+    { x: 55, y: 82, rot: -3 },
+    { x: 18, y: 88, rot: 4 },
+    { x: 88, y: 22, rot: -5 },
+    { x: 42, y: 78, rot: 2 },
+    { x: 90, y: 82, rot: -1 },
+    { x: 60, y: 10, rot: 3 },
+  ];
+
+  const slotsEl = $("#landingTagSlots");
+  if (!slotsEl) return;
+  slotsEl.innerHTML = topTags.map((tag, i) => {
+    const slot = tagSlots[i % tagSlots.length];
+    return `<button class="landing-tag tag-sm" data-tag-nav="${esc(tag)}"
+      style="left:${slot.x}%;top:${slot.y}%;transform:rotate(${slot.rot}deg)">
+      #${esc(tag)}</button>`;
+  }).join('');
+
+  // Click handlers for user tags → navigate to tag page
+  slotsEl.querySelectorAll('[data-tag-nav]').forEach(btn => {
+    btn.addEventListener('click', () => navigateToTag(btn.dataset.tagNav));
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1498,6 +1630,16 @@ function navigate(page) {
   $$('nav button[data-page]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.page === page);
   });
+  // Hide nav on landing, show on inner pages
+  const navEl = $('nav');
+  const containerEl = $('.container');
+  if (page === 'home') {
+    navEl.style.display = 'none';
+    containerEl.style.padding = '0';
+  } else {
+    navEl.style.display = '';
+    containerEl.style.padding = '';
+  }
   if (page === "stream") renderStream();
   if (page === "writing") renderWriting();
   if (page === "highlights") renderHighlights();
@@ -1512,6 +1654,9 @@ function navigateToTag(tag) {
   $$('.page').forEach(p => p.classList.remove('active'));
   $("#page-tag").classList.add('active');
   $$('nav button[data-page]').forEach(btn => btn.classList.remove('active'));
+  // Show nav on tag page
+  $('nav').style.display = '';
+  $('.container').style.padding = '';
   renderTagPage(tag);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2055,7 +2200,7 @@ $("#exportBtn").addEventListener('click', () => {
 
 // Nav
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('nav [data-page], .nav-btn[data-page], .recent-item[data-nav]');
+  const btn = e.target.closest('nav [data-page], .nav-btn[data-page], .recent-item[data-nav], .landing-tag[data-page]');
   if (!btn) return;
   const page = btn.dataset.page || btn.dataset.nav;
   if (page) navigate(page);
@@ -2364,6 +2509,9 @@ streamTextarea.addEventListener('drop', (e) => {
 // ═══════════════════════════════════════════════════════════
 
 (async () => {
+  // Hide nav on landing
+  $('nav').style.display = 'none';
+  $('.container').style.padding = '0';
   await loadPublicData();
   await loadReadingNotes();
   renderAll();
