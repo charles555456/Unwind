@@ -6,8 +6,8 @@
   <title>Unwind — charlesshen</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet"></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet"></noscript>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -110,7 +110,6 @@
       justify-content: center;
     }
 
-
     .landing-hero {
       text-align: center;
       z-index: 2;
@@ -124,7 +123,6 @@
       line-height: 1;
       margin-bottom: 12px;
     }
-
 
     .landing-hero p {
       font-size: 14px;
@@ -149,7 +147,6 @@
       user-select: none;
       text-decoration: none;
     }
-
 
     .landing-tag:hover {
       transform: scale(1.06) rotate(0deg) !important;
@@ -972,18 +969,71 @@
       font-style: italic;
       margin-top: 4px;
     }
+    .reading-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
     .reading-search {
-      width: 100%;
+      flex: 1;
       padding: 10px 14px;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: transparent;
       color: var(--text-primary);
       font-size: 14px;
-      margin-bottom: 16px;
       outline: none;
     }
     .reading-search:focus { border-color: var(--text-tertiary); }
+    .reading-sort-btn {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .reading-sort-btn:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+    .reading-sort-btn.active { background: var(--text-primary); color: var(--bg-primary); border-color: var(--text-primary); }
+    .timeline-highlight {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .timeline-highlight:last-child { border-bottom: none; }
+    .timeline-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+    .timeline-book-title {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+    .timeline-text {
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .timeline-note {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--accent, #e8a838);
+    }
+    .timeline-date-group {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 18px 0 8px;
+      border-bottom: 1px solid var(--border);
+    }
 
     /* ─── Material Sidebar ─── */
     .material-sidebar {
@@ -1131,7 +1181,6 @@
       /* Landing */
       .landing-hero h1 { font-size: 48px; }
       .landing-hero p { font-size: 12px; }
-      .landing-tag { font-size: 12px; padding: 6px 12px; }
       .landing-tag.tag-main { font-size: 16px; padding: 8px 16px; }
       .landing-tag.tag-sm { font-size: 12px; padding: 6px 12px; }
       .landing-footer { font-size: 11px; bottom: 20px; }
@@ -1179,6 +1228,8 @@
 
       /* Reading */
       .reading-search { font-size: 14px; }
+      .reading-sort-btn { font-size: 12px; padding: 10px 10px; }
+      .timeline-meta { flex-direction: column; align-items: flex-start; gap: 2px; }
 
       /* Graph */
       #graphCanvas { height: 320px; }
@@ -1214,18 +1265,16 @@
     <div class="page active" id="page-home">
       <div class="landing" id="landingCanvas">
         <div class="landing-hero">
-          <h1>Unwind<span class="landing-dot">.</span></h1>
+          <h1>Unwind</h1>
           <p>把纏在一起的問題，一條一條理開</p>
         </div>
 
-        <!-- Fixed category tags — positioned via JS -->
         <button class="landing-tag tag-main" data-page="stream" id="ltStream">Stream</button>
         <button class="landing-tag tag-main" data-page="writing" id="ltWriting">Writing</button>
         <button class="landing-tag tag-main" data-page="highlights" id="ltHighlights">Highlights</button>
         <button class="landing-tag tag-main" data-page="reading" id="ltReading">Reading</button>
         <button class="landing-tag tag-main" data-page="graph" id="ltGraph">Graph</button>
 
-        <!-- Dynamic user tags will be injected here -->
         <div id="landingTagSlots"></div>
 
         <div class="landing-footer">by charlesshen</div>
@@ -1397,7 +1446,10 @@
           <p class="page-subtitle" id="readingSubtitle">Kobo 書摘</p>
         </div>
       </div>
-      <input type="text" class="reading-search" id="readingSearch" placeholder="搜尋書名或書摘內容...">
+      <div class="reading-toolbar">
+        <input type="text" class="reading-search" id="readingSearch" placeholder="搜尋書名或書摘內容...">
+        <button class="reading-sort-btn" id="readingSortBtn" title="切換排序">按書籍</button>
+      </div>
       <div id="readingList"></div>
     </div>
 
@@ -1667,7 +1719,6 @@ function renderLanding() {
   if (!canvas) return;
   const isMobile = window.innerWidth <= 480;
 
-  // Positions differ on mobile vs desktop to avoid overlap
   const mainPositions = isMobile ? [
     { id: 'ltStream',     x: 5,  y: 10, rot: -3 },
     { id: 'ltWriting',    x: 55, y: 8,  rot: 2 },
@@ -1690,14 +1741,12 @@ function renderLanding() {
     el.style.transform = `rotate(${p.rot}deg)`;
   });
 
-  // Collect top user tags (by frequency)
   const tagFreq = {};
   STREAM.filter(s => !s.private).forEach(s => (s.tags || []).forEach(t => { tagFreq[t] = (tagFreq[t] || 0) + 1; }));
   WRITING.filter(w => !w.private).forEach(w => (w.tags || []).forEach(t => { tagFreq[t] = (tagFreq[t] || 0) + 1; }));
   const maxTags = isMobile ? 4 : 8;
   const topTags = Object.entries(tagFreq).sort((a, b) => b[1] - a[1]).slice(0, maxTags).map(e => e[0]);
 
-  // Positions for scattered user tags
   const tagSlots = isMobile ? [
     { x: 2,  y: 38, rot: -2 },
     { x: 50, y: 22, rot: 3 },
@@ -1723,7 +1772,6 @@ function renderLanding() {
       #${esc(tag)}</button>`;
   }).join('');
 
-  // Click handlers for user tags → navigate to tag page
   slotsEl.querySelectorAll('[data-tag-nav]').forEach(btn => {
     btn.addEventListener('click', () => navigateToTag(btn.dataset.tagNav));
   });
@@ -2370,6 +2418,7 @@ $("#themeToggle").addEventListener('click', () => {
 // ═══════════════════════════════════════════════════════════
 
 let BOOKS = [];
+let readingSortMode = 'book'; // 'book' or 'time'
 
 async function loadReadingNotes() {
   try {
@@ -2380,6 +2429,18 @@ async function loadReadingNotes() {
 
 function renderReading(query = '') {
   const q = query.toLowerCase();
+  const btn = $("#readingSortBtn");
+  btn.textContent = readingSortMode === 'book' ? '按書籍' : '按時間';
+  btn.classList.toggle('active', readingSortMode === 'time');
+
+  if (readingSortMode === 'time') {
+    renderReadingTimeline(q);
+  } else {
+    renderReadingByBook(q);
+  }
+}
+
+function renderReadingByBook(q) {
   const filtered = q
     ? BOOKS.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.highlights.some(h => h.text.toLowerCase().includes(q)))
     : BOOKS;
@@ -2414,6 +2475,53 @@ function renderReading(query = '') {
     </div>`;
   }).join('') || '<p style="color:var(--text-tertiary);padding:24px 0;">找不到相關書摘。</p>';
 }
+
+function renderReadingTimeline(q) {
+  // 把所有書摘攤平，帶上書名
+  let all = [];
+  BOOKS.forEach(book => {
+    book.highlights.forEach(h => {
+      if (!q || h.text.toLowerCase().includes(q) || book.title.toLowerCase().includes(q) || (h.chapter || '').toLowerCase().includes(q)) {
+        all.push({ ...h, bookTitle: book.title, bookAuthor: book.author });
+      }
+    });
+  });
+
+  // 按時間排序（新→舊）
+  all.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  $("#readingSubtitle").textContent = `${all.length} 條書摘 · 按時間排序`;
+
+  // 按月份分組
+  const groups = {};
+  all.forEach(h => {
+    const d = h.date ? h.date.substring(0, 7) : 'unknown';
+    const label = h.date ? new Date(h.date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }) : '未知日期';
+    if (!groups[d]) groups[d] = { label, items: [] };
+    groups[d].items.push(h);
+  });
+
+  const el = $("#readingList");
+  el.innerHTML = Object.values(groups).map(group => `
+    <div class="timeline-date-group">${group.label}</div>
+    ${group.items.map(h => `
+      <div class="timeline-highlight" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '> ${esc(h.text)}\\n— ${esc(h.bookTitle)}')">
+        <div class="timeline-meta">
+          <span class="timeline-book-title">${esc(h.bookTitle)}</span>
+          <span>${h.date ? new Date(h.date).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' }) : ''}</span>
+        </div>
+        <div class="timeline-text">${esc(h.text)}</div>
+        ${h.note ? `<div class="timeline-note">💡 ${esc(h.note)}</div>` : ''}
+      </div>
+    `).join('')}
+  `).join('') || '<p style="color:var(--text-tertiary);padding:24px 0;">找不到相關書摘。</p>';
+}
+
+// Reading sort toggle
+$("#readingSortBtn").addEventListener('click', () => {
+  readingSortMode = readingSortMode === 'book' ? 'time' : 'book';
+  renderReading($("#readingSearch").value);
+});
 
 // Reading page search
 $("#readingSearch").addEventListener('input', (e) => renderReading(e.target.value));
