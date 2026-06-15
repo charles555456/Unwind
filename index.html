@@ -34,9 +34,10 @@
     ::selection { background: #ddd; }
     :root.dark ::selection { background: #333; }
 
+    html { background: var(--bg); transition: background 0.3s; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
+      background: transparent;
       color: var(--text-primary);
       font-size: 15px;
       line-height: 1.6;
@@ -187,6 +188,118 @@
       .landing-tag.tag-main { font-size: 20px; padding: 10px 22px; }
       .landing-tag.tag-sm { font-size: 14px; padding: 8px 16px; }
     }
+
+    /* ─── Clean hero (replaces scattered landing) ─── */
+    .hero {
+      position: relative;
+      width: 100vw;
+      min-height: 100vh;
+      margin-left: calc(-50vw + 50%);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .hero-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 36px 56px;
+      z-index: 2;
+    }
+    .hero-brand {
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 19px; font-weight: 500;
+      letter-spacing: -0.01em; color: var(--text-primary);
+    }
+    .hero-nav { display: flex; gap: 40px; }
+    .hero-link {
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 16px; font-weight: 400;
+      color: var(--text-tertiary); transition: color 0.2s;
+    }
+    .hero-link:hover, .hero-link.active { color: var(--text-primary); }
+    .hero-body {
+      flex: 1;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 0 56px;
+      max-width: 820px;
+      z-index: 2;
+    }
+    .hero-slogan {
+      font-size: clamp(40px, 6vw, 68px);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      color: var(--text-primary);
+      margin-bottom: 28px;
+    }
+    .hero-tagline {
+      font-size: 19px;
+      line-height: 1.7;
+      font-weight: 300;
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin-bottom: 40px;
+    }
+    .hero-label {
+      font-size: 13px;
+      letter-spacing: 0.32em;
+      font-weight: 400;
+      color: var(--text-tertiary);
+    }
+    @media (max-width: 640px) {
+      .hero-top { padding: 22px 22px; }
+      .hero-nav { gap: 18px; }
+      .hero-link { font-size: 14px; }
+      .hero-brand { font-size: 17px; }
+      .hero-body { padding: 0 22px; }
+      .hero-tagline { font-size: 16px; }
+    }
+
+    /* ─── Problems page (master filter) ─── */
+    .prob-add { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .prob-add input {
+      flex: 1; min-width: 200px; padding: 10px 14px; font-size: 15px; font-family: inherit;
+      background: var(--bg); color: var(--text-primary);
+      border: 1px solid var(--border); border-radius: 8px; outline: none;
+    }
+    .prob-add input:focus { border-color: var(--text-tertiary); }
+    .prob-add .prob-tag-in { flex: 0 0 130px; min-width: 110px; }
+    .prob-add button {
+      padding: 10px 20px; font-size: 14px; font-family: inherit; cursor: pointer;
+      background: var(--text-primary); color: var(--bg); border: none; border-radius: 8px;
+    }
+    .prob-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .prob-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .prob-fbtn {
+      padding: 4px 12px; font-size: 13px; font-family: inherit; cursor: pointer;
+      background: none; color: var(--text-tertiary); border: 1px solid var(--border); border-radius: 20px;
+    }
+    .prob-fbtn.active { background: var(--text-primary); color: var(--bg); border-color: var(--text-primary); }
+    .prob-tools { display: flex; align-items: center; gap: 10px; }
+    .prob-count { font-size: 13px; color: var(--text-tertiary); white-space: nowrap; }
+    .prob-io {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-tertiary); font-size: 12px; font-family: inherit; padding: 4px 10px; cursor: pointer;
+    }
+    .prob-io:hover { color: var(--text-primary); }
+    .prob-card {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+      padding: 16px 0; border-bottom: 1px solid var(--border);
+    }
+    .prob-main { display: flex; align-items: flex-start; gap: 12px; flex: 1; }
+    .prob-status { background: none; border: none; cursor: pointer; font-size: 11px; color: #3aa07e; padding: 0; margin-top: 4px; }
+    .prob-text { font-size: 16px; line-height: 1.6; color: var(--text-primary); }
+    .prob-card.parked { opacity: 0.5; }
+    .prob-card.parked .prob-status { color: var(--text-tertiary); }
+    .prob-card.parked .prob-text { text-decoration: line-through; }
+    .prob-meta { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+    .prob-chip { font-size: 12px; color: var(--text-tertiary); }
+    .prob-date { font-size: 12px; color: var(--text-tertiary); font-family: monospace; }
+    .prob-hit, .prob-del { background: none; border: none; cursor: pointer; font-family: inherit; color: var(--text-tertiary); font-size: 13px; padding: 2px 4px; }
+    .prob-hit:hover { color: var(--text-primary); }
+    .prob-del:hover { color: #c44; }
+    .prob-empty { color: var(--text-tertiary); font-size: 14px; padding: 32px 0; text-align: center; }
 
     .section-label {
       font-size: 14px;
@@ -1247,6 +1360,7 @@
   </style>
 </head>
 <body>
+  <canvas id="bgCanvas" aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none"></canvas>
   <div class="container">
 
     <!-- ─── Navigation ─── -->
@@ -1256,6 +1370,7 @@
       <button data-page="writing">Writing</button>
       <button data-page="highlights">Highlights</button>
       <button data-page="reading">Reading</button>
+      <button data-page="problem">Problems</button>
       <div class="nav-spacer"></div>
       <span class="private-badge" id="privateBadge">Private Mode</span>
       <button data-page="private" title="Private">○</button>
@@ -1263,21 +1378,22 @@
 
     <!-- ═══════════════ HOME (Landing) ═══════════════ -->
     <div class="page active" id="page-home">
-      <div class="landing" id="landingCanvas">
-        <div class="landing-hero">
-          <h1>Unwind</h1>
-          <p>把纏在一起的問題，一條一條理開</p>
+      <div class="hero">
+        <div class="hero-top">
+          <button class="hero-brand" data-page="home">charlesshen</button>
+          <div class="hero-nav">
+            <button class="hero-link active" data-page="home">Home</button>
+            <button class="hero-link" data-page="stream">Stream</button>
+            <button class="hero-link" data-page="writing">Writing</button>
+            <button class="hero-link" data-page="highlights">Highlights</button>
+            <button class="hero-link" data-page="problem">Problems</button>
+          </div>
         </div>
-
-        <button class="landing-tag tag-main" data-page="stream" id="ltStream">Stream</button>
-        <button class="landing-tag tag-main" data-page="writing" id="ltWriting">Writing</button>
-        <button class="landing-tag tag-main" data-page="highlights" id="ltHighlights">Highlights</button>
-        <button class="landing-tag tag-main" data-page="reading" id="ltReading">Reading</button>
-        <button class="landing-tag tag-main" data-page="graph" id="ltGraph">Graph</button>
-
-        <div id="landingTagSlots"></div>
-
-        <div class="landing-footer">by charlesshen</div>
+        <div class="hero-body">
+          <h1 class="hero-slogan">from many, one</h1>
+          <p class="hero-tagline">散落各處的輸入 —— 書、文章、念頭 —— 在這裡收斂成一個可被搜尋的腦。需要時，才找出來用。</p>
+          <div class="hero-label">UNWIND</div>
+        </div>
       </div>
     </div>
 
@@ -1482,6 +1598,32 @@
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f5a623;margin-right:4px;"></span>時刻</span>
         <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-tertiary);margin-right:4px;"></span>tag</span>
       </div>
+    </div>
+
+    <!-- ═══════════════ PROBLEMS ═══════════════ -->
+    <div class="page" id="page-problem">
+      <div class="page-sig" data-page="home"><img src="illustration.png" alt=""><span>Unwind · charlesshen</span></div>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Problems</h1>
+          <p class="page-subtitle">你反覆出現的問題 — 收斂輸入的篩網。有問題才找，找了才用。</p>
+        </div>
+      </div>
+      <div class="prob-add">
+        <input type="text" id="probInput" placeholder="現在反覆在想的問題是？(Enter 新增)" autocomplete="off">
+        <input type="text" id="probTag" class="prob-tag-in" placeholder="分類（可空）" autocomplete="off">
+        <button id="probAddBtn">新增</button>
+      </div>
+      <div class="prob-bar">
+        <div class="prob-filters" id="probFilters"></div>
+        <div class="prob-tools">
+          <span class="prob-count" id="probCount"></span>
+          <button class="prob-io" id="probExport" title="匯出 JSON 備份">匯出</button>
+          <button class="prob-io" id="probImport" title="匯入 JSON">匯入</button>
+        </div>
+      </div>
+      <div id="probList"></div>
+      <input type="file" id="probFile" accept="application/json" style="display:none">
     </div>
 
     <!-- ─── Footer ─── -->
@@ -1804,6 +1946,7 @@ function navigate(page) {
   if (page === "private") renderPrivate();
   if (page === "graph") renderGraph();
   if (page === "reading") renderReading();
+  if (page === "problem") renderProblems();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2358,11 +2501,119 @@ $("#exportBtn").addEventListener('click', () => {
 
 // Nav
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('nav [data-page], .nav-btn[data-page], .recent-item[data-nav], .landing-tag[data-page], .page-sig[data-page]');
+  const btn = e.target.closest('nav [data-page], .nav-btn[data-page], .recent-item[data-nav], .landing-tag[data-page], .page-sig[data-page], .hero [data-page]');
   if (!btn) return;
   const page = btn.dataset.page || btn.dataset.nav;
   if (page) navigate(page);
 });
+
+// ═══════════════════════════════════════════════════════════
+//  PROBLEMS — local master-filter list (localStorage)
+// ═══════════════════════════════════════════════════════════
+let PROBLEMS = [];
+let probFilter = 'active';
+const PROB_KEY = 'unwind_problems';
+
+function loadProblems() {
+  try { PROBLEMS = JSON.parse(localStorage.getItem(PROB_KEY) || '[]') || []; }
+  catch (e) { PROBLEMS = []; }
+}
+function saveProblems() {
+  try { localStorage.setItem(PROB_KEY, JSON.stringify(PROBLEMS)); } catch (e) {}
+}
+function pid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function addProblem(text, tag) {
+  text = (text || '').trim();
+  if (!text) return;
+  PROBLEMS.unshift({ id: pid(), text: text, tag: (tag || '').trim().replace(/^#/, ''), status: 'active', created: today(), hits: 0 });
+  saveProblems();
+  renderProblems();
+}
+
+function renderProblems() {
+  const listEl = $("#probList");
+  if (!listEl) return;
+  const tags = [...new Set(PROBLEMS.map(p => p.tag).filter(Boolean))];
+  const filters = [['active', '進行中'], ['all', '全部'], ...tags.map(t => ['#' + t, '#' + t])];
+  $("#probFilters").innerHTML = filters.map(([k, label]) =>
+    `<button class="prob-fbtn ${probFilter === k ? 'active' : ''}" data-pf="${esc(k)}">${esc(label)}</button>`
+  ).join('');
+  $("#probFilters").querySelectorAll('.prob-fbtn').forEach(b =>
+    b.addEventListener('click', () => { probFilter = b.dataset.pf; renderProblems(); })
+  );
+
+  let items = PROBLEMS.slice();
+  if (probFilter === 'active') items = items.filter(p => p.status !== 'parked');
+  else if (probFilter !== 'all' && probFilter[0] === '#') items = items.filter(p => p.tag === probFilter.slice(1));
+
+  $("#probCount").textContent = `${items.length} 題 · 共 ${PROBLEMS.length}`;
+
+  if (!items.length) {
+    listEl.innerHTML = `<div class="prob-empty">還沒有問題。把腦中反覆出現的問題往上面倒 — 想到就丟。</div>`;
+    return;
+  }
+  listEl.innerHTML = items.map(p => `
+    <div class="prob-card ${p.status === 'parked' ? 'parked' : ''}" data-id="${p.id}">
+      <div class="prob-main">
+        <button class="prob-status" data-act="status" title="切換 進行中 / 封存">●</button>
+        <div class="prob-text">${esc(p.text)}</div>
+      </div>
+      <div class="prob-meta">
+        ${p.tag ? `<span class="prob-chip">#${esc(p.tag)}</span>` : ''}
+        <span class="prob-date">${fmtShort(p.created)}</span>
+        <button class="prob-hit" data-act="hit" title="找出來用過一次 +1">↗ ${p.hits || 0}</button>
+        <button class="prob-del" data-act="del" title="刪除">×</button>
+      </div>
+    </div>`).join('');
+}
+
+(function wireProblems() {
+  const listEl = $("#probList");
+  if (!listEl) return;
+  const doAdd = () => {
+    addProblem($("#probInput").value, $("#probTag").value);
+    $("#probInput").value = ''; $("#probTag").value = ''; $("#probInput").focus();
+  };
+  $("#probAddBtn").addEventListener('click', doAdd);
+  $("#probInput").addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+  $("#probTag").addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+
+  listEl.addEventListener('click', (e) => {
+    const card = e.target.closest('.prob-card'); if (!card) return;
+    const act = e.target.dataset.act; if (!act) return;
+    const id = card.dataset.id;
+    const p = PROBLEMS.find(x => x.id === id); if (!p) return;
+    if (act === 'status') p.status = p.status === 'parked' ? 'active' : 'parked';
+    else if (act === 'hit') p.hits = (p.hits || 0) + 1;
+    else if (act === 'del') { if (!confirm('刪除這題？')) return; PROBLEMS = PROBLEMS.filter(x => x.id !== id); }
+    saveProblems(); renderProblems();
+  });
+
+  $("#probExport").addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(PROBLEMS, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'unwind-problems.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $("#probImport").addEventListener('click', () => $("#probFile").click());
+  $("#probFile").addEventListener('change', (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const data = JSON.parse(rd.result);
+        if (Array.isArray(data) && confirm('用匯入的清單覆蓋目前的問題？')) {
+          PROBLEMS = data; saveProblems(); renderProblems();
+        }
+      } catch (err) { alert('檔案格式錯誤'); }
+    };
+    rd.readAsText(f);
+    e.target.value = '';
+  });
+})();
 
 // Password visibility toggle
 $("#pwToggle").addEventListener('click', () => {
@@ -2730,9 +2981,128 @@ streamTextarea.addEventListener('drop', (e) => {
   // Hide nav on landing
   $('nav').style.display = 'none';
   $('.container').style.padding = '0';
+  loadProblems();
   await loadPublicData();
   await loadReadingNotes();
   renderAll();
+})();
+</script>
+<script>
+/* ── tangle → circle convergence background (theme-aware) ── */
+(function(){
+  var cv = document.getElementById('bgCanvas');
+  if(!cv) return;
+  var ctx = cv.getContext('2d');
+  var W = 0, H = 0, DPR, N = 24, M = 120, strands = [], stroke = [136, 136, 136];
+  var R, cx, cy;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var tNow = 0, startTs = -1, MORPH_MS = 2600;
+
+  function readColor(){
+    var c = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#888';
+    var el = document.createElement('span');
+    el.style.color = c; el.style.display = 'none';
+    document.body.appendChild(el);
+    var m = getComputedStyle(el).color.match(/\d+/g);
+    document.body.removeChild(el);
+    if(m) stroke = [m[0], m[1], m[2]];
+  }
+  function rnd(a, b){ return a + Math.random() * (b - a); }
+  function ease(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+
+  function build(){
+    var r = cv.getBoundingClientRect();
+    var w = Math.round(r.width) || window.innerWidth || document.documentElement.clientWidth || 0;
+    var h = Math.round(r.height) || window.innerHeight || document.documentElement.clientHeight || 0;
+    if(!w || !h) return;
+    if(w === W && h === H && strands.length) return;
+    W = w; H = h;
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    N = W < 640 ? 16 : 24;
+    R = Math.min(W * 0.6, H) * 0.34;
+    cx = W < 640 ? W * 0.5 : W * 0.72;
+    cy = H * 0.46;
+    readColor();
+    strands = [];
+    for(var s = 0; s < N; s++){
+      var rScale = rnd(0.80, 1.04);
+      var ang = rnd(0, Math.PI*2), dist = rnd(0, 0.14 * R);
+      var bcx = Math.cos(ang) * dist, bcy = Math.sin(ang) * dist;
+      var tScale = rnd(0.32, 0.62), swirl = rnd(0.4, 1.05), swph = rnd(0, Math.PI*2);
+      var harm = [];
+      for(var k = 0; k < 3; k++) harm.push([2 + ((Math.random()*4)|0), rnd(0.15, 0.5), rnd(0, Math.PI*2)]);
+      var pts = [];
+      for(var i = 0; i <= M; i++){
+        var a = i / M * Math.PI * 2;
+        var cr = R * rScale * (1 + 0.015*Math.sin(a*6 + s));
+        var ccx = cx + Math.cos(a)*cr, ccy = cy + Math.sin(a)*cr;
+        var dd = 1;
+        for(var hh = 0; hh < harm.length; hh++) dd += harm[hh][1]*Math.sin(harm[hh][0]*a + harm[hh][2]);
+        var tr = R * tScale * dd, ta = a + swirl*Math.sin(a*2 + swph);
+        var tcx = cx + bcx + Math.cos(ta)*tr + rnd(-6, 6);
+        var tcy = cy + bcy + Math.sin(ta)*tr + rnd(-6, 6);
+        pts.push([tcx, tcy, ccx, ccy]);
+      }
+      strands.push(pts);
+    }
+    if(reduce) tNow = 1;
+    draw(0);
+  }
+
+  function draw(time){
+    if(!W || !H) return;
+    ctx.clearRect(0, 0, W, H);
+    var aLine = W < 640 ? 0.045 : 0.06;
+    ctx.strokeStyle = 'rgba(' + stroke[0] + ',' + stroke[1] + ',' + stroke[2] + ',' + aLine + ')';
+    ctx.lineWidth = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    var spread = 0.14, rot = time * 0.00003, br = 1 + 0.022*Math.sin(time*0.0006);
+    for(var si = 0; si < strands.length; si++){
+      var pts = strands[si];
+      var tt = (tNow - (si / N) * spread) / (1 - spread);
+      tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
+      var te = ease(tt), sh = (1 - te) * 2.0, settled = te > 0.999;
+      ctx.beginPath();
+      for(var i = 0; i < pts.length; i++){
+        var p = pts[i];
+        var x = p[0] + (p[2] - p[0]) * te;
+        var y = p[1] + (p[3] - p[1]) * te;
+        if(settled){
+          var dx = x - cx, dy = y - cy, ca = Math.cos(rot), sa = Math.sin(rot);
+          x = cx + (dx*ca - dy*sa) * br;
+          y = cy + (dx*sa + dy*ca) * br;
+        } else if(sh > 0.01){
+          x += Math.sin(time*0.002 + i*0.3 + si) * sh;
+          y += Math.cos(time*0.0021 + i*0.27 + si) * sh;
+        }
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function loop(ts){
+    if(!W || !H) build();
+    if(W && H && !document.hidden){
+      if(!reduce){
+        if(startTs < 0) startTs = ts || 0;
+        var el = (ts || 0) - startTs;
+        tNow = el >= MORPH_MS ? 1 : el / MORPH_MS;
+      }
+      draw(ts || 0);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', build);
+  window.addEventListener('load', build);
+  if(window.ResizeObserver){ new ResizeObserver(build).observe(cv); }
+  if(window.MutationObserver){
+    new MutationObserver(readColor).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
+  build();
+  if(!reduce) requestAnimationFrame(loop);
 })();
 </script>
 </body>
