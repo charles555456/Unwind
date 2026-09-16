@@ -2988,15 +2988,18 @@ streamTextarea.addEventListener('drop', (e) => {
 })();
 </script>
 <script>
-/* ── tangle → circle convergence background (theme-aware, HUD ring) ── */
+/* ── tangle → particle sphere background (theme-aware) ── */
 (function(){
   var cv = document.getElementById('bgCanvas');
   if(!cv) return;
   var ctx = cv.getContext('2d');
-  var W = 0, H = 0, DPR, N = 24, M = 120, strands = [], stroke = [136, 136, 136], accent = [37, 99, 235];
-  var R, cx, cy, nodes = [], chords = [], NN = 28, NC = 16;
+  var W = 0, H = 0, DPR, stroke = [26, 26, 26], dark = false;
+  var R, cx, cy, P = [], RING = [], NP = 0, NR = 0;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var tNow = 0, tTarget = 0, mouseMode = false, startTs = -1, MORPH_MS = 2600;
+  var tNow = 0, startTs = -1, MORPH_MS = 3000;
+  var TILT = 0.42, cT = Math.cos(TILT), sT = Math.sin(TILT);
+  var mx = 0, my = 0, mxS = 0, myS = 0; // pointer parallax, smoothed
+  var styles = [];
   function nowMs(){ return (window.performance && performance.now) ? performance.now() : 0; }
 
   function readColor(){
@@ -3007,190 +3010,141 @@ streamTextarea.addEventListener('drop', (e) => {
     var m = getComputedStyle(el).color.match(/\d+/g);
     document.body.removeChild(el);
     if(m) stroke = [m[0], m[1], m[2]];
-    accent = document.documentElement.classList.contains('dark') ? [96, 165, 250] : [37, 99, 235];
+    dark = document.documentElement.classList.contains('dark');
+    styles = [];
+    for(var i = 0; i < 16; i++) styles.push('rgba(' + stroke[0] + ',' + stroke[1] + ',' + stroke[2] + ',' + (i / 15).toFixed(3) + ')');
   }
   function rnd(a, b){ return a + Math.random() * (b - a); }
+  function gauss(){ return (Math.random() + Math.random() + Math.random() - 1.5) * 1.15; }
   function ease(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
-  function rgba(c, a){ return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
 
   function build(){
     var r = cv.getBoundingClientRect();
     var w = Math.round(r.width) || window.innerWidth || document.documentElement.clientWidth || 0;
     var h = Math.round(r.height) || window.innerHeight || document.documentElement.clientHeight || 0;
     if(!w || !h) return;
-    if(w === W && h === H && strands.length) return;
+    if(w === W && h === H && P.length) return;
     W = w; H = h;
     DPR = Math.min(2, window.devicePixelRatio || 1);
     cv.width = W * DPR; cv.height = H * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     var mobile = W < 640;
-    N = mobile ? 16 : 24;
     if(mobile){
-      R = Math.min(W * 0.28, H * 0.12);
+      R = Math.min(W * 0.26, H * 0.11);
       cx = W * 0.5; cy = H * 0.27;
     } else {
-      R = Math.min(W * 0.19, H * 0.24, 300);
+      R = Math.min(W * 0.18, H * 0.24, 290);
       cx = W * 0.74; cy = H * 0.42;
     }
     readColor();
-    strands = [];
-    for(var s = 0; s < N; s++){
-      var rScale = rnd(0.82, 1.03);
-      var ang = rnd(0, Math.PI*2), dist = rnd(0, 0.14 * R);
-      var bcx = Math.cos(ang) * dist, bcy = Math.sin(ang) * dist;
-      var tScale = rnd(0.32, 0.62), swirl = rnd(0.4, 1.05), swph = rnd(0, Math.PI*2);
-      var harm = [];
-      for(var k = 0; k < 3; k++) harm.push([2 + ((Math.random()*4)|0), rnd(0.15, 0.5), rnd(0, Math.PI*2)]);
-      var pts = [];
-      for(var i = 0; i <= M; i++){
-        var a = i / M * Math.PI * 2;
-        var cr = R * rScale * (1 + 0.012*Math.sin(a*6 + s));
-        var ccx = cx + Math.cos(a)*cr, ccy = cy + Math.sin(a)*cr;
-        var dd = 1;
-        for(var hh = 0; hh < harm.length; hh++) dd += harm[hh][1]*Math.sin(harm[hh][0]*a + harm[hh][2]);
-        var tr = R * tScale * dd, ta = a + swirl*Math.sin(a*2 + swph);
-        var tcx = cx + bcx + Math.cos(ta)*tr + rnd(-6, 6);
-        var tcy = cy + bcy + Math.sin(ta)*tr + rnd(-6, 6);
-        pts.push([tcx, tcy, ccx, ccy]);
-      }
-      strands.push(pts);
+    NP = mobile ? 1400 : 3200;
+    NR = mobile ? 350 : 900;
+    P = []; RING = [];
+    // sphere: fibonacci shell + a sparse interior
+    var golden = Math.PI * (3 - Math.sqrt(5));
+    for(var i = 0; i < NP; i++){
+      var interior = Math.random() < 0.18;
+      var y = 1 - (i / (NP - 1)) * 2, rad = Math.sqrt(1 - y*y), th = golden * i;
+      var x = Math.cos(th) * rad, z = Math.sin(th) * rad;
+      var sc = interior ? Math.pow(Math.random(), 0.6) * 0.92 : 1;
+      // start: chaotic cloud, biased outward
+      var sa = rnd(0, Math.PI*2), sb = rnd(-1, 1), sr = rnd(0.6, 2.4);
+      var srad = Math.sqrt(1 - sb*sb);
+      P.push({
+        x: x*sc, y: y*sc, z: z*sc, shell: !interior,
+        sx: Math.cos(sa)*srad*sr, sy: sb*sr, sz: Math.sin(sa)*srad*sr,
+        d: rnd(0, 1), ph: rnd(0, Math.PI*2), sz2: interior ? rnd(0.7, 1.2) : rnd(1.0, 2.0)
+      });
     }
-    // graph layer: nodes on the ring, sparse chords between them
-    nodes = []; chords = [];
-    for(var n = 0; n < NN; n++) nodes.push(n / NN * Math.PI*2 + rnd(-0.06, 0.06));
-    var tries = 0;
-    while(chords.length < NC && tries++ < 400){
-      var a1 = (Math.random()*NN)|0, a2 = (Math.random()*NN)|0;
-      var gap = Math.abs(a1 - a2); gap = Math.min(gap, NN - gap);
-      if(gap < 4) continue;
-      var dup = false;
-      for(var c = 0; c < chords.length; c++) if((chords[c][0]===a1&&chords[c][1]===a2)||(chords[c][0]===a2&&chords[c][1]===a1)) dup = true;
-      if(dup) continue;
-      chords.push([a1, a2, rnd(0, Math.PI*2)]);
+    // halo ring: scattered band around the sphere
+    for(var k = 0; k < NR; k++){
+      var a = rnd(0, Math.PI*2), rr = 1.32 + gauss()*0.10 + (Math.random() < 0.15 ? rnd(0.1, 0.6) : 0);
+      RING.push({ a: a, r: rr, h: gauss()*0.035, ph: rnd(0, Math.PI*2), sz2: rnd(0.5, 1.2), d: rnd(0, 1),
+                  sx: rnd(-2.6, 2.6), sy: rnd(-2.6, 2.6), sz: rnd(-2.6, 2.6) });
     }
     if(reduce) tNow = 1;
     draw(0);
   }
 
-  function drawHud(time, te){
-    // fade the structured layer in over the last quarter of the morph
-    var k = (te - 0.72) / 0.28; k = k < 0 ? 0 : k > 1 ? 1 : k; k = k*k*(3-2*k);
-    if(k <= 0) return;
-    var rot = time * 0.00003, br = 1 + 0.022*Math.sin(time*0.0006);
-    var rr = R * br;
-    ctx.lineCap = 'butt';
-
-    // outer tick ring (counter-rotating)
-    var ro = rr * 1.22, trot = -time * 0.00004;
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = rgba(stroke, 0.12 * k);
-    ctx.beginPath(); ctx.arc(cx, cy, ro, 0, Math.PI*2); ctx.stroke();
-    ctx.strokeStyle = rgba(stroke, 0.30 * k);
-    ctx.beginPath();
-    for(var t = 0; t < 72; t++){
-      var a = t / 72 * Math.PI*2 + trot, len = t % 6 === 0 ? 9 : 4;
-      ctx.moveTo(cx + Math.cos(a)*ro, cy + Math.sin(a)*ro);
-      ctx.lineTo(cx + Math.cos(a)*(ro + len), cy + Math.sin(a)*(ro + len));
-    }
-    ctx.stroke();
-
-    // cardinal marks just outside the ticks
-    ctx.strokeStyle = rgba(stroke, 0.28 * k);
-    ctx.beginPath();
-    for(var q = 0; q < 4; q++){
-      var qa = q * Math.PI/2, r1 = ro + 16, r2 = ro + 26;
-      ctx.moveTo(cx + Math.cos(qa)*r1, cy + Math.sin(qa)*r1);
-      ctx.lineTo(cx + Math.cos(qa)*r2, cy + Math.sin(qa)*r2);
-    }
-    ctx.stroke();
-
-    // dashed inner ring (co-rotating, faster)
-    ctx.setLineDash([2, 7]);
-    ctx.lineDashOffset = -time * 0.02;
-    ctx.strokeStyle = rgba(stroke, 0.18 * k);
-    ctx.beginPath(); ctx.arc(cx, cy, rr * 0.78, 0, Math.PI*2); ctx.stroke();
-    ctx.setLineDash([]);
-
-    // chords between nodes
-    var px = [], py = [];
-    for(var n = 0; n < NN; n++){
-      var na = nodes[n] + rot;
-      px.push(cx + Math.cos(na)*rr); py.push(cy + Math.sin(na)*rr);
-    }
-    for(var c = 0; c < chords.length; c++){
-      var ch = chords[c], pulse = 0.5 + 0.5*Math.sin(time*0.0009 + ch[2]);
-      ctx.strokeStyle = rgba(stroke, (0.05 + 0.07*pulse) * k);
-      ctx.beginPath(); ctx.moveTo(px[ch[0]], py[ch[0]]); ctx.lineTo(px[ch[1]], py[ch[1]]); ctx.stroke();
-    }
-    // data packets travelling along the first few chords
-    for(var d = 0; d < 5 && d < chords.length; d++){
-      var cd = chords[d], f = ((time*0.00018 + d*0.23) % 1 + 1) % 1;
-      var qx = px[cd[0]] + (px[cd[1]] - px[cd[0]])*f, qy = py[cd[0]] + (py[cd[1]] - py[cd[0]])*f;
-      ctx.fillStyle = rgba(accent, 0.85 * k);
-      ctx.beginPath(); ctx.arc(qx, qy, 1.8, 0, Math.PI*2); ctx.fill();
-    }
-    // nodes
-    for(var m = 0; m < NN; m++){
-      var nr = 1.5 + 0.5*Math.sin(time*0.002 + m*0.9);
-      ctx.fillStyle = rgba(stroke, 0.55 * k);
-      ctx.beginPath(); ctx.arc(px[m], py[m], nr, 0, Math.PI*2); ctx.fill();
-    }
-
-    // radar sweep on the tick ring
-    var sa = time * 0.0005, span = 0.9;
-    var g = ctx.createConicGradient ? null : null;
-    ctx.lineWidth = 1.5;
-    for(var s = 0; s < 12; s++){
-      var f0 = s / 12, f1 = (s + 1) / 12;
-      ctx.strokeStyle = rgba(accent, 0.55 * k * f1 * f1);
-      ctx.beginPath(); ctx.arc(cx, cy, ro, sa - span*(1 - f0), sa - span*(1 - f1)); ctx.stroke();
-    }
-    ctx.fillStyle = rgba(accent, 0.95 * k);
-    ctx.beginPath(); ctx.arc(cx + Math.cos(sa)*ro, cy + Math.sin(sa)*ro, 2.4, 0, Math.PI*2); ctx.fill();
-    ctx.lineWidth = 1;
+  function project(x, y, z){
+    // tilt about X, then perspective
+    var y2 = y*cT - z*sT, z2 = y*sT + z*cT;
+    var f = 1 + 0.28*z2;
+    return [cx + x*R*f, cy + y2*R*f, z2];
   }
 
   function draw(time){
     if(!W || !H) return;
     ctx.clearRect(0, 0, W, H);
-    var aLine = W < 640 ? 0.06 : 0.09;
-    ctx.strokeStyle = rgba(stroke, aLine);
-    ctx.lineWidth = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    var spread = 0.14, rot = time * 0.00003, br = 1 + 0.022*Math.sin(time*0.0006);
-    var minTe = 1;
-    for(var si = 0; si < strands.length; si++){
-      var pts = strands[si];
-      var tt = (tNow - (si / N) * spread) / (1 - spread);
-      tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
-      var te = ease(tt), sh = (1 - te) * 2.0, settled = te > 0.999;
-      if(te < minTe) minTe = te;
-      ctx.beginPath();
-      for(var i = 0; i < pts.length; i++){
-        var p = pts[i];
-        var x = p[0] + (p[2] - p[0]) * te;
-        var y = p[1] + (p[3] - p[1]) * te;
-        if(settled){
-          var dx = x - cx, dy = y - cy, ca = Math.cos(rot), sa = Math.sin(rot);
-          x = cx + (dx*ca - dy*sa) * br;
-          y = cy + (dx*sa + dy*ca) * br;
-        } else if(sh > 0.01){
-          x += Math.sin(time*0.002 + i*0.3 + si) * sh;
-          y += Math.cos(time*0.0021 + i*0.27 + si) * sh;
-        }
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      }
-      ctx.stroke();
+    var mobile = W < 640;
+    var spread = 0.35;
+    mxS += (mx - mxS) * 0.04; myS += (my - myS) * 0.04;
+    var tilt = TILT + myS * 0.22; cT = Math.cos(tilt); sT = Math.sin(tilt);
+    var rotY = time * 0.00012 + mxS * 0.45, cY = Math.cos(rotY), sY = Math.sin(rotY);
+    var t1 = time*0.0007, t2 = time*0.0005, t3 = time*0.0009;
+    var baseA = mobile ? 0.65 : 0.9;
+    var i, p, tt, te, x, y, z, ux, uy, uz, disp, pr, depth, a, s, idx;
+
+    // halo ring (slower, opposite spin)
+    var rotR = -time * 0.00005, cR = Math.cos(rotR), sR = Math.sin(rotR);
+    for(i = 0; i < NR; i++){
+      p = RING[i];
+      tt = (tNow - p.d * spread) / (1 - spread); tt = tt < 0 ? 0 : tt > 1 ? 1 : tt; te = ease(tt);
+      var ang = p.a + rotR;
+      var rx = Math.cos(ang) * p.r, rz = Math.sin(ang) * p.r, ry = p.h + 0.02*Math.sin(t2 + p.ph);
+      // ring lies near the equator; tilt handled by project()
+      x = p.sx + (rx - p.sx)*te; y = p.sy + (ry - p.sy)*te; z = p.sz + (rz - p.sz)*te;
+      pr = project(x, y, z);
+      depth = (pr[2] + 1.4) / 2.8; depth = depth < 0 ? 0 : depth > 1 ? 1 : depth;
+      a = (0.06 + 0.30*depth*depth) * baseA * (0.6 + 0.4*te);
+      s = p.sz2 * (0.6 + 0.6*depth);
+      idx = Math.round(a * 15); if(idx <= 0) continue;
+      ctx.fillStyle = styles[idx];
+      ctx.fillRect(pr[0], pr[1], s, s);
     }
-    drawHud(time, minTe);
+
+    // sphere
+    for(i = 0; i < NP; i++){
+      p = P[i];
+      tt = (tNow - p.d * spread) / (1 - spread); tt = tt < 0 ? 0 : tt > 1 ? 1 : tt; te = ease(tt);
+      ux = p.x; uy = p.y; uz = p.z;
+      // surface flow: low-frequency displacement on the shell, rotates with the sphere
+      if(p.shell){
+        disp = 1 + 0.05*Math.sin(3.1*ux + t1)*Math.sin(2.7*uy - t2) + 0.035*Math.sin(4.3*uz + t3 + 2.6*ux);
+        ux *= disp; uy *= disp; uz *= disp;
+      }
+      // spin about Y
+      x = ux*cY + uz*sY; z = -ux*sY + uz*cY; y = uy;
+      // morph from the chaotic cloud
+      x = p.sx + (x - p.sx)*te; y = p.sy + (y - p.sy)*te; z = p.sz + (z - p.sz)*te;
+      if(te < 0.999){
+        var sh = (1 - te) * 0.25;
+        x += Math.sin(time*0.0015 + p.ph) * sh; y += Math.cos(time*0.0013 + p.ph*1.3) * sh;
+      }
+      pr = project(x, y, z);
+      depth = (pr[2] + 1.1) / 2.2; depth = depth < 0 ? 0 : depth > 1 ? 1 : depth;
+      a = (0.08 + 0.72*depth*depth) * baseA * (p.shell ? 1 : 0.55);
+      s = p.sz2 * (0.55 + 0.75*depth);
+      idx = Math.round(a * 15); if(idx <= 0) continue;
+      ctx.fillStyle = styles[idx];
+      ctx.fillRect(pr[0], pr[1], s, s);
+    }
+
+    // soft core glow in dark mode only
+    if(dark && tNow > 0.9){
+      var g = ctx.createRadialGradient(cx, cy, R*0.2, cx, cy, R*1.05);
+      g.addColorStop(0, 'rgba(255,255,255,' + (0.08*(tNow-0.9)*10) + ')');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, R*1.05, 0, Math.PI*2); ctx.fill();
+    }
   }
 
   function loop(ts){
     if(!W || !H) build();
-    if(W && H && !document.hidden){
+    if(W && H){
       if(reduce){
         tNow = 1;
-      } else if(mouseMode){
-        tNow += (tTarget - tNow) * 0.12;
       } else {
         if(startTs < 0) startTs = ts || 0;
         var el = (ts || 0) - startTs;
@@ -3205,11 +3159,7 @@ streamTextarea.addEventListener('drop', (e) => {
   window.addEventListener('load', build);
   window.addEventListener('pointermove', function(e){
     if(reduce || !W) return;
-    var x = e.clientX;
-    tTarget = x < 0 ? 0 : (x > W ? 1 : x / W);
-    mouseMode = true;
-    tNow += (tTarget - tNow) * 0.35;
-    draw(nowMs());
+    mx = (e.clientX / W) * 2 - 1; my = (e.clientY / H) * 2 - 1;
   });
   if(window.ResizeObserver){ new ResizeObserver(build).observe(cv); }
   if(window.MutationObserver){
