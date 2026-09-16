@@ -3002,14 +3002,13 @@ streamTextarea.addEventListener('drop', (e) => {
   var cv = document.getElementById('bgCanvas');
   if(!cv) return;
   var ctx = cv.getContext('2d');
-  var W = 0, H = 0, DPR, stroke = [26, 26, 26], dark = false;
-  var R, cx, cy, P = [], RING = [], NP = 0, NR = 0;
+  var W = 0, H = 0, DPR, stroke = [242, 242, 242], dark = true;
+  var R, cx, cy, P = [], NP = 0;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var tNow = 0, startTs = -1, MORPH_MS = 3000;
-  var TILT = 0.42, cT = Math.cos(TILT), sT = Math.sin(TILT);
+  var TILT = 0.14, cT = Math.cos(TILT), sT = Math.sin(TILT);
   var mx = 0, my = 0, mxS = 0, myS = 0; // pointer parallax, smoothed
   var styles = [];
-  function nowMs(){ return (window.performance && performance.now) ? performance.now() : 0; }
 
   function readColor(){
     var c = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#888';
@@ -3024,7 +3023,6 @@ streamTextarea.addEventListener('drop', (e) => {
     for(var i = 0; i < 16; i++) styles.push('rgba(' + stroke[0] + ',' + stroke[1] + ',' + stroke[2] + ',' + (i / 15).toFixed(3) + ')');
   }
   function rnd(a, b){ return a + Math.random() * (b - a); }
-  function gauss(){ return (Math.random() + Math.random() + Math.random() - 1.5) * 1.15; }
   function ease(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
 
   function build(){
@@ -3039,47 +3037,36 @@ streamTextarea.addEventListener('drop', (e) => {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     var mobile = W < 640;
     if(mobile){
-      R = Math.min(W * 0.26, H * 0.11);
+      R = Math.min(W * 0.27, H * 0.115);
       cx = W * 0.5; cy = H * 0.27;
     } else {
       R = Math.min(W * 0.18, H * 0.24, 290);
       cx = W * 0.74; cy = H * 0.42;
     }
     readColor();
-    NP = mobile ? 1400 : 3200;
-    NR = mobile ? 350 : 900;
-    P = []; RING = [];
-    // sphere: fibonacci shell + a sparse interior
-    var golden = Math.PI * (3 - Math.sqrt(5));
-    for(var i = 0; i < NP; i++){
-      var interior = Math.random() < 0.18;
-      var y = 1 - (i / (NP - 1)) * 2, rad = Math.sqrt(1 - y*y), th = golden * i;
-      var x = Math.cos(th) * rad, z = Math.sin(th) * rad;
-      var sc = interior ? Math.pow(Math.random(), 0.6) * 0.92 : 1;
-      // start: chaotic cloud, biased outward
-      var sa = rnd(0, Math.PI*2), sb = rnd(-1, 1), sr = rnd(0.6, 2.4);
-      var srad = Math.sqrt(1 - sb*sb);
-      P.push({
-        x: x*sc, y: y*sc, z: z*sc, shell: !interior,
-        sx: Math.cos(sa)*srad*sr, sy: sb*sr, sz: Math.sin(sa)*srad*sr,
-        d: rnd(0, 1), ph: rnd(0, Math.PI*2), sz2: interior ? rnd(0.7, 1.2) : rnd(1.0, 2.0)
-      });
-    }
-    // halo ring: scattered band around the sphere
-    for(var k = 0; k < NR; k++){
-      var a = rnd(0, Math.PI*2), rr = 1.32 + gauss()*0.10 + (Math.random() < 0.15 ? rnd(0.1, 0.6) : 0);
-      RING.push({ a: a, r: rr, h: gauss()*0.035, ph: rnd(0, Math.PI*2), sz2: rnd(0.5, 1.2), d: rnd(0, 1),
-                  sx: rnd(-2.6, 2.6), sy: rnd(-2.6, 2.6), sz: rnd(-2.6, 2.6) });
+    NP = mobile ? 3600 : 9000;
+    P = [];
+    // shell only. Latitude sampled uniformly in angle (dense at the poles),
+    // then thinned near the equator so a dark band shows through.
+    var tries = 0;
+    while(P.length < NP && tries++ < NP * 20){
+      var lat = rnd(-1, 1) * Math.PI / 2, lon = rnd(0, Math.PI * 2);
+      var s = Math.abs(Math.sin(lat));
+      var keep = 0.16 + 0.84 * Math.pow(s, 1.5);
+      if(Math.random() > keep) continue;
+      // slight fuzz so the surface is not a hard sheet
+      var rr = 1 + (Math.random() < 0.85 ? rnd(-0.012, 0.012) : rnd(-0.05, 0.04));
+      var cl = Math.cos(lat);
+      var x = Math.cos(lon) * cl * rr, y = Math.sin(lat) * rr, z = Math.sin(lon) * cl * rr;
+      // size classes: mostly fine dust, some grains, a few sparks
+      var u = Math.random(), sz = u < 0.82 ? rnd(0.6, 1.0) : u < 0.97 ? rnd(1.1, 1.6) : rnd(1.7, 2.3);
+      var sa = rnd(0, Math.PI*2), sb = rnd(-1, 1), sr = rnd(0.6, 2.4), srad = Math.sqrt(1 - sb*sb);
+      P.push({ x: x, y: y, z: z, sz2: sz, spark: u >= 0.96,
+               sx: Math.cos(sa)*srad*sr, sy: sb*sr, sz: Math.sin(sa)*srad*sr,
+               d: rnd(0, 1), ph: rnd(0, Math.PI*2) });
     }
     if(reduce) tNow = 1;
     draw(0);
-  }
-
-  function project(x, y, z){
-    // tilt about X, then perspective
-    var y2 = y*cT - z*sT, z2 = y*sT + z*cT;
-    var f = 1 + 0.28*z2;
-    return [cx + x*R*f, cy + y2*R*f, z2];
   }
 
   function draw(time){
@@ -3088,64 +3075,49 @@ streamTextarea.addEventListener('drop', (e) => {
     var mobile = W < 640;
     var spread = 0.35;
     mxS += (mx - mxS) * 0.04; myS += (my - myS) * 0.04;
-    var tilt = TILT + myS * 0.22; cT = Math.cos(tilt); sT = Math.sin(tilt);
-    var rotY = time * 0.00012 + mxS * 0.45, cY = Math.cos(rotY), sY = Math.sin(rotY);
-    var t1 = time*0.0007, t2 = time*0.0005, t3 = time*0.0009;
-    var baseA = mobile ? 0.65 : 0.9;
-    var i, p, tt, te, x, y, z, ux, uy, uz, disp, pr, depth, a, s, idx;
+    var tilt = TILT + myS * 0.18; cT = Math.cos(tilt); sT = Math.sin(tilt);
+    var rotY = time * 0.00010 + mxS * 0.4, cY = Math.cos(rotY), sY = Math.sin(rotY);
+    var baseA = mobile ? 0.8 : 1.0;
+    var i, p, tt, te, x, y, z, y2, z2, f, px, py, depth, a, s, idx;
 
-    // halo ring (slower, opposite spin)
-    var rotR = -time * 0.00005, cR = Math.cos(rotR), sR = Math.sin(rotR);
-    for(i = 0; i < NR; i++){
-      p = RING[i];
-      tt = (tNow - p.d * spread) / (1 - spread); tt = tt < 0 ? 0 : tt > 1 ? 1 : tt; te = ease(tt);
-      var ang = p.a + rotR;
-      var rx = Math.cos(ang) * p.r, rz = Math.sin(ang) * p.r, ry = p.h + 0.02*Math.sin(t2 + p.ph);
-      // ring lies near the equator; tilt handled by project()
-      x = p.sx + (rx - p.sx)*te; y = p.sy + (ry - p.sy)*te; z = p.sz + (rz - p.sz)*te;
-      pr = project(x, y, z);
-      depth = (pr[2] + 1.4) / 2.8; depth = depth < 0 ? 0 : depth > 1 ? 1 : depth;
-      a = (0.06 + 0.30*depth*depth) * baseA * (0.6 + 0.4*te);
-      s = p.sz2 * (0.6 + 0.6*depth);
-      idx = Math.round(a * 15); if(idx <= 0) continue;
-      ctx.fillStyle = styles[idx];
-      ctx.fillRect(pr[0], pr[1], s, s);
-    }
-
-    // sphere
     for(i = 0; i < NP; i++){
       p = P[i];
       tt = (tNow - p.d * spread) / (1 - spread); tt = tt < 0 ? 0 : tt > 1 ? 1 : tt; te = ease(tt);
-      ux = p.x; uy = p.y; uz = p.z;
-      // surface flow: low-frequency displacement on the shell, rotates with the sphere
-      if(p.shell){
-        disp = 1 + 0.05*Math.sin(3.1*ux + t1)*Math.sin(2.7*uy - t2) + 0.035*Math.sin(4.3*uz + t3 + 2.6*ux);
-        ux *= disp; uy *= disp; uz *= disp;
-      }
-      // spin about Y
-      x = ux*cY + uz*sY; z = -ux*sY + uz*cY; y = uy;
+      // spin about the vertical axis
+      x = p.x*cY + p.z*sY; z = -p.x*sY + p.z*cY; y = p.y;
       // morph from the chaotic cloud
       x = p.sx + (x - p.sx)*te; y = p.sy + (y - p.sy)*te; z = p.sz + (z - p.sz)*te;
       if(te < 0.999){
         var sh = (1 - te) * 0.25;
         x += Math.sin(time*0.0015 + p.ph) * sh; y += Math.cos(time*0.0013 + p.ph*1.3) * sh;
       }
-      pr = project(x, y, z);
-      depth = (pr[2] + 1.1) / 2.2; depth = depth < 0 ? 0 : depth > 1 ? 1 : depth;
-      a = (0.08 + 0.72*depth*depth) * baseA * (p.shell ? 1 : 0.55);
-      s = p.sz2 * (0.55 + 0.75*depth);
+      // tilt toward the viewer, mild perspective
+      y2 = y*cT - z*sT; z2 = y*sT + z*cT;
+      f = 1 + 0.22*z2;
+      px = cx + x*R*f; py = cy + y2*R*f;
+      depth = (z2 + 1.1) / 2.2; depth = depth < 0 ? 0 : depth > 1 ? 1 : depth;
+      a = (0.14 + 0.86*depth) * baseA;
+      if(p.spark) a = Math.min(1, a + 0.15 + 0.15*Math.sin(time*0.003 + p.ph));
+      s = p.sz2 * (0.7 + 0.5*depth);
       idx = Math.round(a * 15); if(idx <= 0) continue;
       ctx.fillStyle = styles[idx];
-      ctx.fillRect(pr[0], pr[1], s, s);
+      if(p.spark){ ctx.beginPath(); ctx.arc(px, py, s * 0.6, 0, 6.2832); ctx.fill(); }
+      else ctx.fillRect(px, py, s, s);
     }
 
-    // soft core glow in dark mode only
+    // soft glow at the bright poles, dark theme only
     if(dark && tNow > 0.9){
-      var g = ctx.createRadialGradient(cx, cy, R*0.2, cx, cy, R*1.05);
-      g.addColorStop(0, 'rgba(255,255,255,' + (0.08*(tNow-0.9)*10) + ')');
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(cx, cy, R*1.05, 0, Math.PI*2); ctx.fill();
+      var k = (tNow - 0.9) * 10, gr = R * 0.45;
+      var pole = [[0, -1], [0, 1]];
+      for(var q = 0; q < 2; q++){
+        var gy = pole[q][1]*cT, gz = pole[q][1]*sT, gf = 1 + 0.22*gz;
+        var gx = cx, gyy = cy + gy*R*gf;
+        var g = ctx.createRadialGradient(gx, gyy, 0, gx, gyy, gr);
+        g.addColorStop(0, 'rgba(255,255,255,' + (0.10*k) + ')');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(gx, gyy, gr, 0, Math.PI*2); ctx.fill();
+      }
     }
   }
 
