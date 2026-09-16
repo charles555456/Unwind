@@ -2988,13 +2988,13 @@ streamTextarea.addEventListener('drop', (e) => {
 })();
 </script>
 <script>
-/* ── tangle → circle convergence background (theme-aware) ── */
+/* ── tangle → circle convergence background (theme-aware, HUD ring) ── */
 (function(){
   var cv = document.getElementById('bgCanvas');
   if(!cv) return;
   var ctx = cv.getContext('2d');
-  var W = 0, H = 0, DPR, N = 24, M = 120, strands = [], stroke = [136, 136, 136];
-  var R, cx, cy;
+  var W = 0, H = 0, DPR, N = 24, M = 120, strands = [], stroke = [136, 136, 136], accent = [37, 99, 235];
+  var R, cx, cy, nodes = [], chords = [], NN = 28, NC = 16;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var tNow = 0, tTarget = 0, mouseMode = false, startTs = -1, MORPH_MS = 2600;
   function nowMs(){ return (window.performance && performance.now) ? performance.now() : 0; }
@@ -3007,9 +3007,11 @@ streamTextarea.addEventListener('drop', (e) => {
     var m = getComputedStyle(el).color.match(/\d+/g);
     document.body.removeChild(el);
     if(m) stroke = [m[0], m[1], m[2]];
+    accent = document.documentElement.classList.contains('dark') ? [96, 165, 250] : [37, 99, 235];
   }
   function rnd(a, b){ return a + Math.random() * (b - a); }
   function ease(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+  function rgba(c, a){ return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
 
   function build(){
     var r = cv.getBoundingClientRect();
@@ -3021,14 +3023,19 @@ streamTextarea.addEventListener('drop', (e) => {
     DPR = Math.min(2, window.devicePixelRatio || 1);
     cv.width = W * DPR; cv.height = H * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    N = W < 640 ? 16 : 24;
-    R = Math.min(W * 0.6, H) * 0.27;
-    cx = W < 640 ? W * 0.5 : W * 0.28;
-    cy = W < 640 ? H * 0.62 : H * 0.70;
+    var mobile = W < 640;
+    N = mobile ? 16 : 24;
+    if(mobile){
+      R = Math.min(W * 0.28, H * 0.12);
+      cx = W * 0.5; cy = H * 0.27;
+    } else {
+      R = Math.min(W * 0.19, H * 0.24, 300);
+      cx = W * 0.74; cy = H * 0.42;
+    }
     readColor();
     strands = [];
     for(var s = 0; s < N; s++){
-      var rScale = rnd(0.80, 1.04);
+      var rScale = rnd(0.82, 1.03);
       var ang = rnd(0, Math.PI*2), dist = rnd(0, 0.14 * R);
       var bcx = Math.cos(ang) * dist, bcy = Math.sin(ang) * dist;
       var tScale = rnd(0.32, 0.62), swirl = rnd(0.4, 1.05), swph = rnd(0, Math.PI*2);
@@ -3037,7 +3044,7 @@ streamTextarea.addEventListener('drop', (e) => {
       var pts = [];
       for(var i = 0; i <= M; i++){
         var a = i / M * Math.PI * 2;
-        var cr = R * rScale * (1 + 0.015*Math.sin(a*6 + s));
+        var cr = R * rScale * (1 + 0.012*Math.sin(a*6 + s));
         var ccx = cx + Math.cos(a)*cr, ccy = cy + Math.sin(a)*cr;
         var dd = 1;
         for(var hh = 0; hh < harm.length; hh++) dd += harm[hh][1]*Math.sin(harm[hh][0]*a + harm[hh][2]);
@@ -3048,22 +3055,115 @@ streamTextarea.addEventListener('drop', (e) => {
       }
       strands.push(pts);
     }
+    // graph layer: nodes on the ring, sparse chords between them
+    nodes = []; chords = [];
+    for(var n = 0; n < NN; n++) nodes.push(n / NN * Math.PI*2 + rnd(-0.06, 0.06));
+    var tries = 0;
+    while(chords.length < NC && tries++ < 400){
+      var a1 = (Math.random()*NN)|0, a2 = (Math.random()*NN)|0;
+      var gap = Math.abs(a1 - a2); gap = Math.min(gap, NN - gap);
+      if(gap < 4) continue;
+      var dup = false;
+      for(var c = 0; c < chords.length; c++) if((chords[c][0]===a1&&chords[c][1]===a2)||(chords[c][0]===a2&&chords[c][1]===a1)) dup = true;
+      if(dup) continue;
+      chords.push([a1, a2, rnd(0, Math.PI*2)]);
+    }
     if(reduce) tNow = 1;
     draw(0);
+  }
+
+  function drawHud(time, te){
+    // fade the structured layer in over the last quarter of the morph
+    var k = (te - 0.72) / 0.28; k = k < 0 ? 0 : k > 1 ? 1 : k; k = k*k*(3-2*k);
+    if(k <= 0) return;
+    var rot = time * 0.00003, br = 1 + 0.022*Math.sin(time*0.0006);
+    var rr = R * br;
+    ctx.lineCap = 'butt';
+
+    // outer tick ring (counter-rotating)
+    var ro = rr * 1.22, trot = -time * 0.00004;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = rgba(stroke, 0.12 * k);
+    ctx.beginPath(); ctx.arc(cx, cy, ro, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = rgba(stroke, 0.30 * k);
+    ctx.beginPath();
+    for(var t = 0; t < 72; t++){
+      var a = t / 72 * Math.PI*2 + trot, len = t % 6 === 0 ? 9 : 4;
+      ctx.moveTo(cx + Math.cos(a)*ro, cy + Math.sin(a)*ro);
+      ctx.lineTo(cx + Math.cos(a)*(ro + len), cy + Math.sin(a)*(ro + len));
+    }
+    ctx.stroke();
+
+    // cardinal marks just outside the ticks
+    ctx.strokeStyle = rgba(stroke, 0.28 * k);
+    ctx.beginPath();
+    for(var q = 0; q < 4; q++){
+      var qa = q * Math.PI/2, r1 = ro + 16, r2 = ro + 26;
+      ctx.moveTo(cx + Math.cos(qa)*r1, cy + Math.sin(qa)*r1);
+      ctx.lineTo(cx + Math.cos(qa)*r2, cy + Math.sin(qa)*r2);
+    }
+    ctx.stroke();
+
+    // dashed inner ring (co-rotating, faster)
+    ctx.setLineDash([2, 7]);
+    ctx.lineDashOffset = -time * 0.02;
+    ctx.strokeStyle = rgba(stroke, 0.18 * k);
+    ctx.beginPath(); ctx.arc(cx, cy, rr * 0.78, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // chords between nodes
+    var px = [], py = [];
+    for(var n = 0; n < NN; n++){
+      var na = nodes[n] + rot;
+      px.push(cx + Math.cos(na)*rr); py.push(cy + Math.sin(na)*rr);
+    }
+    for(var c = 0; c < chords.length; c++){
+      var ch = chords[c], pulse = 0.5 + 0.5*Math.sin(time*0.0009 + ch[2]);
+      ctx.strokeStyle = rgba(stroke, (0.05 + 0.07*pulse) * k);
+      ctx.beginPath(); ctx.moveTo(px[ch[0]], py[ch[0]]); ctx.lineTo(px[ch[1]], py[ch[1]]); ctx.stroke();
+    }
+    // data packets travelling along the first few chords
+    for(var d = 0; d < 5 && d < chords.length; d++){
+      var cd = chords[d], f = ((time*0.00018 + d*0.23) % 1 + 1) % 1;
+      var qx = px[cd[0]] + (px[cd[1]] - px[cd[0]])*f, qy = py[cd[0]] + (py[cd[1]] - py[cd[0]])*f;
+      ctx.fillStyle = rgba(accent, 0.85 * k);
+      ctx.beginPath(); ctx.arc(qx, qy, 1.8, 0, Math.PI*2); ctx.fill();
+    }
+    // nodes
+    for(var m = 0; m < NN; m++){
+      var nr = 1.5 + 0.5*Math.sin(time*0.002 + m*0.9);
+      ctx.fillStyle = rgba(stroke, 0.55 * k);
+      ctx.beginPath(); ctx.arc(px[m], py[m], nr, 0, Math.PI*2); ctx.fill();
+    }
+
+    // radar sweep on the tick ring
+    var sa = time * 0.0005, span = 0.9;
+    var g = ctx.createConicGradient ? null : null;
+    ctx.lineWidth = 1.5;
+    for(var s = 0; s < 12; s++){
+      var f0 = s / 12, f1 = (s + 1) / 12;
+      ctx.strokeStyle = rgba(accent, 0.55 * k * f1 * f1);
+      ctx.beginPath(); ctx.arc(cx, cy, ro, sa - span*(1 - f0), sa - span*(1 - f1)); ctx.stroke();
+    }
+    ctx.fillStyle = rgba(accent, 0.95 * k);
+    ctx.beginPath(); ctx.arc(cx + Math.cos(sa)*ro, cy + Math.sin(sa)*ro, 2.4, 0, Math.PI*2); ctx.fill();
+    ctx.lineWidth = 1;
   }
 
   function draw(time){
     if(!W || !H) return;
     ctx.clearRect(0, 0, W, H);
-    var aLine = W < 640 ? 0.045 : 0.06;
-    ctx.strokeStyle = 'rgba(' + stroke[0] + ',' + stroke[1] + ',' + stroke[2] + ',' + aLine + ')';
+    var aLine = W < 640 ? 0.06 : 0.09;
+    ctx.strokeStyle = rgba(stroke, aLine);
     ctx.lineWidth = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     var spread = 0.14, rot = time * 0.00003, br = 1 + 0.022*Math.sin(time*0.0006);
+    var minTe = 1;
     for(var si = 0; si < strands.length; si++){
       var pts = strands[si];
       var tt = (tNow - (si / N) * spread) / (1 - spread);
       tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
       var te = ease(tt), sh = (1 - te) * 2.0, settled = te > 0.999;
+      if(te < minTe) minTe = te;
       ctx.beginPath();
       for(var i = 0; i < pts.length; i++){
         var p = pts[i];
@@ -3081,6 +3181,7 @@ streamTextarea.addEventListener('drop', (e) => {
       }
       ctx.stroke();
     }
+    drawHud(time, minTe);
   }
 
   function loop(ts){
