@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="dark">
 <head>
   <meta charset="UTF-8">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark light">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Unwind — charlesshen</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,8 +25,8 @@
     }
 
     :root.dark {
-      --bg: #111;
-      --text-primary: #e8e8e8;
+      --bg: #000;
+      --text-primary: #f2f2f2;
       --text-secondary: #aaa;
       --text-tertiary: #666;
       --border: #222;
@@ -1360,7 +1362,7 @@
   </style>
 </head>
 <body>
-  <canvas id="bgCanvas" aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none"></canvas>
+  <canvas id="bgCanvas" aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;transition:opacity 0.6s ease"></canvas>
   <div class="container">
 
     <!-- ─── Navigation ─── -->
@@ -1629,7 +1631,7 @@
     <!-- ─── Footer ─── -->
     <footer>
       <span>© 2026 Unwind · charlesshen</span>
-      <button class="theme-toggle" id="themeToggle">Dark</button>
+      <button class="theme-toggle" id="themeToggle">Light</button>
     </footer>
   </div>
 
@@ -1940,6 +1942,7 @@ function navigate(page) {
     navEl.style.display = '';
     containerEl.style.padding = '';
   }
+  $('#bgCanvas').style.opacity = page === 'home' ? '1' : '0.12';
   if (page === "stream") renderStream();
   if (page === "writing") renderWriting();
   if (page === "highlights") renderHighlights();
@@ -1958,6 +1961,7 @@ function navigateToTag(tag) {
   // Show nav on tag page
   $('nav').style.display = '';
   $('.container').style.padding = '';
+  $('#bgCanvas').style.opacity = '0.12';
   renderTagPage(tag);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2657,11 +2661,16 @@ $("#lockBtn").addEventListener('click', async () => {
   renderAll();
 });
 
-// Theme
+// Theme — dark by default; remember an explicit choice
+try {
+  if (localStorage.getItem('unwind-theme') === 'light') document.documentElement.classList.remove('dark');
+} catch (e) {}
+$("#themeToggle").textContent = document.documentElement.classList.contains('dark') ? "Light" : "Dark";
 $("#themeToggle").addEventListener('click', () => {
   document.documentElement.classList.toggle('dark');
   const isDark = document.documentElement.classList.contains('dark');
   $("#themeToggle").textContent = isDark ? "Light" : "Dark";
+  try { localStorage.setItem('unwind-theme', isDark ? 'dark' : 'light'); } catch (e) {}
 });
 
 // ═══════════════════════════════════════════════════════════
