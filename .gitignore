@@ -1,0 +1,4 @@
+.fuse_hidden*
+*.bak
+*.bak-*
+KoboReader.sqlite*

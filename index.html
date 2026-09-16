@@ -2996,7 +2996,8 @@ streamTextarea.addEventListener('drop', (e) => {
   var W = 0, H = 0, DPR, N = 24, M = 120, strands = [], stroke = [136, 136, 136];
   var R, cx, cy;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var tNow = 0, startTs = -1, MORPH_MS = 2600;
+  var tNow = 0, tTarget = 0, mouseMode = false, startTs = -1, MORPH_MS = 2600;
+  function nowMs(){ return (window.performance && performance.now) ? performance.now() : 0; }
 
   function readColor(){
     var c = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#888';
@@ -3021,9 +3022,9 @@ streamTextarea.addEventListener('drop', (e) => {
     cv.width = W * DPR; cv.height = H * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     N = W < 640 ? 16 : 24;
-    R = Math.min(W * 0.6, H) * 0.34;
-    cx = W < 640 ? W * 0.5 : W * 0.72;
-    cy = H * 0.46;
+    R = Math.min(W * 0.6, H) * 0.27;
+    cx = W < 640 ? W * 0.5 : W * 0.28;
+    cy = W < 640 ? H * 0.62 : H * 0.70;
     readColor();
     strands = [];
     for(var s = 0; s < N; s++){
@@ -3085,7 +3086,11 @@ streamTextarea.addEventListener('drop', (e) => {
   function loop(ts){
     if(!W || !H) build();
     if(W && H && !document.hidden){
-      if(!reduce){
+      if(reduce){
+        tNow = 1;
+      } else if(mouseMode){
+        tNow += (tTarget - tNow) * 0.12;
+      } else {
         if(startTs < 0) startTs = ts || 0;
         var el = (ts || 0) - startTs;
         tNow = el >= MORPH_MS ? 1 : el / MORPH_MS;
@@ -3097,6 +3102,14 @@ streamTextarea.addEventListener('drop', (e) => {
 
   window.addEventListener('resize', build);
   window.addEventListener('load', build);
+  window.addEventListener('pointermove', function(e){
+    if(reduce || !W) return;
+    var x = e.clientX;
+    tTarget = x < 0 ? 0 : (x > W ? 1 : x / W);
+    mouseMode = true;
+    tNow += (tTarget - tNow) * 0.35;
+    draw(nowMs());
+  });
   if(window.ResizeObserver){ new ResizeObserver(build).observe(cv); }
   if(window.MutationObserver){
     new MutationObserver(readColor).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
