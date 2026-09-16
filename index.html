@@ -861,7 +861,7 @@
     .editor-panel textarea:focus,
     .editor-panel select:focus { border-color: var(--text-tertiary); }
 
-    .editor-panel textarea { min-height: 80px; line-height: 1.6; }
+    .editor-panel textarea { min-height: 240px; line-height: 1.7; font-size: 16px; }
 
     .format-toolbar {
       display: flex;
@@ -1333,7 +1333,7 @@
       .editor-panel input[type="date"],
       .editor-panel textarea,
       .editor-panel select { font-size: 14px; padding: 8px 10px; }
-      .editor-panel textarea { min-height: 100px; }
+      .editor-panel textarea { min-height: 300px; font-size: 16px; }
       .editor-actions { gap: 6px; }
       .editor-save, .editor-draft, .editor-cancel { font-size: 13px; padding: 7px 14px; }
       .format-toolbar button { font-size: 12px; padding: 3px 8px; }
@@ -1454,7 +1454,7 @@
           <button type="button" data-fmt="bold" title="粗體"><b>B</b></button>
           <button type="button" data-fmt="heading" title="重點大字">H</button>
         </div>
-        <textarea id="edWritingSummary" placeholder="寫下文章內容... (支援 Markdown)" style="min-height:160px;"></textarea>
+        <textarea id="edWritingSummary" placeholder="寫下文章內容... (支援 Markdown)" style="min-height:480px;"></textarea>
         <label>Tags（用逗號分隔）</label>
         <div style="position:relative;">
           <input type="text" id="edWritingTags" placeholder="thoughts, life, reading" autocomplete="off">
