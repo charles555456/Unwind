@@ -2,3 +2,8 @@
 *.bak
 *.bak-*
 KoboReader.sqlite*
+
+# Never publish database setup scripts that may carry credentials
+supabase-setup.sql
+**/supabase-setup.sql
+kobo-sync.log

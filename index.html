@@ -12,6 +12,8 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet"></noscript>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="review-pick.js"></script>
+  <link rel="stylesheet" href="extras.css">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -251,9 +253,9 @@
     }
     @media (max-width: 640px) {
       .hero-top { padding: 22px 22px; flex-direction: column; align-items: flex-start; gap: 14px; }
-      .hero-nav { gap: 10px 18px; flex-wrap: wrap; }
+      .hero-nav { gap: 10px 14px; flex-wrap: wrap; }
       .hero-nav .hero-link[data-page="home"] { display: none; }
-      .hero-link { font-size: 14px; }
+      .hero-link { font-size: 13px; }
       .hero-brand { font-size: 17px; }
       .hero-body { padding: 0 22px; }
       .hero-tagline { font-size: 16px; }
@@ -1115,6 +1117,36 @@
     }
     .reading-sort-btn:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
     .reading-sort-btn.active { background: var(--text-primary); color: var(--bg-primary); border-color: var(--text-primary); }
+    /* ─── Daily Review ─── */
+    .review-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+    .review-tab {
+      background: none; border: 1px solid var(--border); border-radius: 9999px;
+      padding: 6px 14px; font-size: 13px; font-family: inherit; cursor: pointer;
+      color: var(--text-secondary); transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .review-tab:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+    .review-tab.active { background: var(--text-primary); color: var(--bg); border-color: var(--text-primary); }
+    .review-card { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .review-card:last-child { border-bottom: none; }
+    .review-index { font-size: 12px; letter-spacing: 0.12em; color: var(--text-tertiary); margin-bottom: 12px; }
+    .review-text { font-size: 18px; line-height: 1.85; color: var(--text-primary); white-space: pre-wrap; }
+    .review-note { margin-top: 10px; font-size: 14px; color: var(--accent, #e8a838); }
+    .review-source { margin-top: 14px; font-size: 13px; color: var(--text-tertiary); }
+    .review-source b { font-weight: 500; color: var(--text-secondary); }
+    .review-actions { margin-top: 14px; display: flex; gap: 8px; }
+    .review-act {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 12px; font-size: 12px; font-family: inherit; cursor: pointer;
+      color: var(--text-tertiary); transition: border-color 0.2s, color 0.2s;
+    }
+    .review-act:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+    .review-act.on { color: #e8a838; border-color: #e8a838; }
+    .review-empty { color: var(--text-tertiary); padding: 32px 0; font-size: 14px; line-height: 1.8; }
+    @media (max-width: 480px) {
+      .review-text { font-size: 16px; line-height: 1.8; }
+      .review-card { padding: 22px 0; }
+    }
+
     .timeline-highlight {
       padding: 14px 0;
       border-bottom: 1px solid var(--border);
@@ -1372,8 +1404,11 @@
       <button data-page="stream">Stream</button>
       <button data-page="writing">Writing</button>
       <button data-page="highlights">Highlights</button>
+      <button data-page="review">Review</button>
       <button data-page="reading">Reading</button>
       <button data-page="problem">Problems</button>
+      <button data-page="later" class="private-only">Later</button>
+      <button data-page="inbox" class="private-only">Inbox</button>
       <div class="nav-spacer"></div>
       <span class="private-badge" id="privateBadge">Private Mode</span>
       <button data-page="private" title="Private">○</button>
@@ -1389,6 +1424,7 @@
             <button class="hero-link" data-page="stream">Stream</button>
             <button class="hero-link" data-page="writing">Writing</button>
             <button class="hero-link" data-page="highlights">Highlights</button>
+            <button class="hero-link" data-page="review">Review</button>
             <button class="hero-link" data-page="problem">Problems</button>
           </div>
         </div>
@@ -1549,6 +1585,11 @@
         <p style="color:var(--text-secondary);line-height:1.75;margin-bottom:24px;">
           已解鎖。你現在可以在各頁面看到私密內容，也可以用 + New 按鈕新增內容。
         </p>
+        <div class="x-row" style="margin-bottom:24px">
+          <button class="x-btn" data-x-goto="later">稍後閱讀</button>
+          <button class="x-btn" data-x-goto="inbox">電子報</button>
+          <button class="x-btn" data-x-goto="review">每日回顧</button>
+        </div>
         <button class="lock-btn" id="lockBtn">Lock again</button>
         <div class="data-actions">
           <button class="data-btn" id="exportBtn">Export JSON</button>
@@ -1557,6 +1598,57 @@
     </div>
 
     <!-- ═══════════════ READING NOTES ═══════════════ -->
+    <div class="page" id="page-review">
+      <div class="page-sig" data-page="home"><img src="illustration.png" alt=""><span>Unwind · charlesshen</span></div>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Daily Review</h1>
+          <p class="page-subtitle" id="reviewSubtitle">每日回顧</p>
+        </div>
+      </div>
+      <div class="review-toolbar">
+        <button class="review-tab active" data-review-mode="today">今日</button>
+        <button class="review-tab" data-review-mode="favs">收藏 <span id="reviewFavCount"></span></button>
+        <div style="flex:1"></div>
+        <button class="review-tab" id="reviewShuffle">再抽一批</button>
+      </div>
+      <div id="reviewScopeRow" style="margin-top:14px">
+        <div class="x-row">
+          <span class="x-note">推播範圍</span>
+          <div class="review-scope" role="group" aria-label="推播範圍">
+            <button data-review-scope="all">全時間</button>
+            <button data-review-scope="recent">近兩週</button>
+          </div>
+        </div>
+        <p class="review-scope-status" id="reviewScopeStatus"></p>
+      </div>
+      <div id="reviewList"></div>
+    </div>
+
+    <!-- ═══════════════ READ LATER (private) ═══════════════ -->
+    <div class="page" id="page-later">
+      <div class="page-sig" data-page="home"><img src="illustration.png" alt=""><span>Unwind · charlesshen</span></div>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Read Later</h1>
+          <p class="page-subtitle" id="laterSubtitle">稍後閱讀</p>
+        </div>
+      </div>
+      <div id="laterBody"></div>
+    </div>
+
+    <!-- ═══════════════ NEWSLETTER INBOX (private) ═══════════════ -->
+    <div class="page" id="page-inbox">
+      <div class="page-sig" data-page="home"><img src="illustration.png" alt=""><span>Unwind · charlesshen</span></div>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Inbox</h1>
+          <p class="page-subtitle" id="inboxSubtitle">電子報</p>
+        </div>
+      </div>
+      <div id="inboxBody"></div>
+    </div>
+
     <div class="page" id="page-reading">
       <div class="page-sig" data-page="home"><img src="illustration.png" alt=""><span>Unwind · charlesshen</span></div>
       <div class="page-header">
@@ -1711,6 +1803,12 @@ function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+// For values placed inside an HTML attribute: esc() does not escape quotes.
+function escAttr(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function stripMd(str) {
@@ -1951,6 +2049,8 @@ function navigate(page) {
   if (page === "graph") renderGraph();
   if (page === "reading") renderReading();
   if (page === "problem") renderProblems();
+  if (page === "review") renderReview();
+  try { history.replaceState(null, '', page === 'home' ? location.pathname + location.search : '#' + page); } catch (e) {}
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2513,6 +2613,166 @@ document.addEventListener('click', (e) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+//  DAILY REVIEW — a few highlights a day, same set the push sends
+// ═══════════════════════════════════════════════════════════
+const FAV_KEY = 'unwind_favs';
+let FAVS = [];
+let reviewMode = 'today';
+let reviewRound = 0; // 0 = the daily set; "再抽一批" bumps it
+let reviewScope = 'all';        // 'all' | 'recent' — what is on screen
+let reviewScopeSynced = null;   // what the push will use; null = not known yet
+let reviewScopeNote = '';
+const SCOPE_KEY = 'unwind_review_scope';
+
+// The push reads the scope from the public settings table, so that table is
+// the source of truth. localStorage only remembers the last known value.
+async function loadReviewScope() {
+  try {
+    const cached = localStorage.getItem(SCOPE_KEY);
+    if (cached === 'recent' || cached === 'all') reviewScope = cached;
+  } catch (e) {}
+  try {
+    const { data, error } = await sb.from('settings').select('value').eq('key', 'review_scope').maybeSingle();
+    if (error) return; // table not created yet
+    reviewScopeSynced = data && data.value === 'recent' ? 'recent' : 'all';
+    reviewScope = reviewScopeSynced;
+    try { localStorage.setItem(SCOPE_KEY, reviewScope); } catch (e) {}
+  } catch (e) {}
+}
+
+async function setReviewScope(scope) {
+  reviewScope = scope === 'recent' ? 'recent' : 'all';
+  reviewRound = 0;
+  reviewScopeNote = '';
+  if (isPrivate && storedPassword) {
+    reviewScopeNote = '同步中…';
+    renderReview();
+    const { error } = await sb.rpc('set_setting', { pw: storedPassword, p_key: 'review_scope', p_value: reviewScope });
+    if (error) {
+      reviewScopeNote = /could not find the function|schema cache/i.test(error.message || '') || error.code === 'PGRST202'
+        ? '資料庫還沒更新，手機推播暫時維持「全時間」。執行 supabase/migration-v3.sql 後再選一次。'
+        : '同步失敗：' + error.message;
+    } else {
+      reviewScopeSynced = reviewScope;
+      reviewScopeNote = '';
+      try { localStorage.setItem(SCOPE_KEY, reviewScope); } catch (e) {}
+    }
+  }
+  renderReview();
+}
+
+function renderReviewScope(result) {
+  $$('[data-review-scope]').forEach(b => b.classList.toggle('active', b.dataset.reviewScope === reviewScope));
+  $("#reviewScopeRow").style.display = reviewMode === 'today' ? '' : 'none';
+  const el = $("#reviewScopeStatus");
+  const label = s => s === 'recent' ? '近兩週' : '全時間';
+  let text = '', ok = false;
+  if (reviewScopeNote) {
+    text = reviewScopeNote;
+  } else if (reviewScopeSynced === reviewScope) {
+    text = `手機推播：${label(reviewScope)}。每天早上 8 點送出，內容和這頁第一批相同。`;
+    ok = true;
+  } else if (reviewScopeSynced) {
+    text = `這裡只是預覽。手機推播目前是「${label(reviewScopeSynced)}」，解鎖 Private 後再選一次才會改。`;
+  } else {
+    text = '這裡只是預覽。解鎖 Private 後再選一次，手機推播才會跟著改。';
+  }
+  if (result && result.scope === 'recent') {
+    text += result.fallback ? ' 近兩週沒有新書摘，先從全部書摘抽。'
+      : ` 近兩週共 ${result.recentCount} 條書摘。`;
+  }
+  el.textContent = text;
+  el.classList.toggle('ok', ok);
+}
+
+function loadFavs() {
+  try { FAVS = JSON.parse(localStorage.getItem(FAV_KEY) || '[]') || []; }
+  catch (e) { FAVS = []; }
+}
+function saveFavs() {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(FAVS)); } catch (e) {}
+}
+
+function renderReview() {
+  const listEl = $("#reviewList");
+  if (!listEl) return;
+  const day = ReviewPick.taipeiDate();
+  $("#reviewFavCount").textContent = FAVS.length ? FAVS.length : '';
+  $$('.review-tab[data-review-mode]').forEach(b => b.classList.toggle('active', b.dataset.reviewMode === reviewMode));
+  $("#reviewShuffle").style.display = reviewMode === 'today' ? '' : 'none';
+
+  if (!BOOKS.length) {
+    $("#reviewSubtitle").textContent = '每日回顧';
+    renderReviewScope(null);
+    listEl.innerHTML = '<p class="review-empty">還沒有書摘。接上 Kobo 同步後就會出現。</p>';
+    return;
+  }
+
+  let picks, result = null;
+  if (reviewMode === 'favs') {
+    const favSet = new Set(FAVS);
+    picks = ReviewPick.flatten(BOOKS).filter(h => favSet.has(h.id));
+    $("#reviewSubtitle").textContent = `收藏 · ${picks.length} 條`;
+    renderReviewScope(null);
+    if (!picks.length) {
+      listEl.innerHTML = '<p class="review-empty">還沒有收藏。<br>在今日回顧按 ☆ 就會留在這裡，之後也會更常出現。</p>';
+      return;
+    }
+  } else {
+    // round 0 is the set the push sends; favourites only join later rounds
+    result = ReviewPick.daily(BOOKS, day, reviewScope, 5, { round: reviewRound, favs: FAVS });
+    picks = result.items;
+    const scopeLabel = reviewScope === 'recent' && !result.fallback ? '近兩週' : '全時間';
+    $("#reviewSubtitle").textContent = `${day} · ${scopeLabel} · ${picks.length} 條` + (reviewRound ? ` · 第 ${reviewRound + 1} 批` : '');
+    renderReviewScope(result);
+  }
+
+  listEl.innerHTML = picks.map((h, i) => `
+    <div class="review-card" data-hid="${esc(h.id)}">
+      <div class="review-index">${String(i + 1).padStart(2, '0')} / ${String(picks.length).padStart(2, '0')}</div>
+      <div class="review-text">${esc(h.text)}</div>
+      ${h.note ? `<div class="review-note">💡 ${esc(h.note)}</div>` : ''}
+      <div class="review-source"><b>${esc(h.bookTitle)}</b>${h.bookAuthor ? ' · ' + esc(h.bookAuthor) : ''}${h.chapter ? ' · ' + esc(h.chapter) : ''}</div>
+      <div class="review-actions">
+        <button class="review-act ${FAVS.includes(h.id) ? 'on' : ''}" data-review-fav="${esc(h.id)}">${FAVS.includes(h.id) ? '★ 已收藏' : '☆ 收藏'}</button>
+        <button class="review-act" data-qc-text="${escAttr(h.text)}" data-qc-source="${escAttr(h.bookTitle)}" data-qc-author="${escAttr(h.bookAuthor || '')}">圖卡</button>
+        <button class="review-act" data-review-copy="${esc(h.id)}">複製引用</button>
+      </div>
+    </div>
+  `).join('');
+  listEl._picks = picks;
+}
+
+document.addEventListener('click', (e) => {
+  const tab = e.target.closest('.review-tab[data-review-mode]');
+  if (tab) { reviewMode = tab.dataset.reviewMode; renderReview(); return; }
+
+  const scopeBtn = e.target.closest('[data-review-scope]');
+  if (scopeBtn) { setReviewScope(scopeBtn.dataset.reviewScope); return; }
+
+  if (e.target.closest('#reviewShuffle')) { reviewRound++; renderReview(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+
+  const fav = e.target.closest('[data-review-fav]');
+  if (fav) {
+    const id = fav.dataset.reviewFav;
+    FAVS = FAVS.includes(id) ? FAVS.filter(x => x !== id) : [id, ...FAVS];
+    saveFavs();
+    renderReview();
+    return;
+  }
+
+  const copy = e.target.closest('[data-review-copy]');
+  if (copy) {
+    const h = ($("#reviewList")._picks || []).find(x => x.id === copy.dataset.reviewCopy);
+    if (!h) return;
+    const quote = '> ' + h.text + '\n— ' + h.bookTitle;
+    const done = () => { copy.textContent = '已複製'; setTimeout(() => { copy.textContent = '複製引用'; }, 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(quote).then(done, () => {});
+    return;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 //  PROBLEMS — local master-filter list (localStorage)
 // ═══════════════════════════════════════════════════════════
 let PROBLEMS = [];
@@ -2773,6 +3033,7 @@ function renderReadingTimeline(q) {
         </div>
         <div class="timeline-text">${esc(h.text)}</div>
         ${h.note ? `<div class="timeline-note">💡 ${esc(h.note)}</div>` : ''}
+        <div style="margin-top:10px"><button class="review-act" data-qc-text="${escAttr(ReviewPick.tidy(h.text))}" data-qc-source="${escAttr(h.bookTitle)}" data-qc-author="${escAttr(h.bookAuthor || '')}">圖卡</button></div>
       </div>
     `).join('')}
   `).join('') || '<p style="color:var(--text-tertiary);padding:24px 0;">找不到相關書摘。</p>';
@@ -2992,11 +3253,19 @@ streamTextarea.addEventListener('drop', (e) => {
   $('nav').style.display = 'none';
   $('.container').style.padding = '0';
   loadProblems();
-  await loadPublicData();
+  loadFavs();
+  await Promise.all([loadPublicData(), loadReviewScope()]);
   await loadReadingNotes();
   renderAll();
+  const openFromHash = () => {
+    const h = (location.hash || '').slice(1);
+    if (h && h !== currentPage && /^[a-z]+$/.test(h) && h !== 'tag' && $('#page-' + h)) navigate(h);
+  };
+  openFromHash();
+  window.addEventListener('hashchange', openFromHash);
 })();
 </script>
+<script src="extras.js"></script>
 <script>
 /* ── tangle → particle sphere background (theme-aware) ── */
 (function(){
