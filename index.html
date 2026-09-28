@@ -2678,7 +2678,7 @@ function renderReviewScope(result) {
   if (reviewScopeNote) {
     text = reviewScopeNote;
   } else if (reviewScopeSynced === reviewScope) {
-    text = `手機推播：${label(reviewScope)}。每天早上 8 點送出，內容和這頁第一批相同。`;
+    text = `手機推播：${label(reviewScope)}。內容和這頁第一批相同。`;
     ok = true;
   } else if (reviewScopeSynced) {
     text = `這裡只是預覽。手機推播目前是「${label(reviewScopeSynced)}」，解鎖 Private 後再選一次才會改。`;

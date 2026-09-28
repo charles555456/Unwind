@@ -2,12 +2,18 @@ name: Daily Review push
 
 on:
   schedule:
-    # 00:00 UTC = 08:00 Asia/Taipei. GitHub may start a few minutes late.
-    - cron: '0 0 * * *'
+    # Wakes every 15 minutes. The script sends once a day, at the time chosen
+    # on the Review page (default 08:00 Taipei). GitHub can start a run late.
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: write
+
+concurrency:
+  group: daily-review-push
+  cancel-in-progress: false
 
 jobs:
   push:
@@ -17,10 +23,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Is it time?
+        id: gate
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' }}
+        run: node scripts/daily-push.js --check
       - name: Install the web push library
+        if: steps.gate.outputs.send == 'true'
         run: npm install --no-save --no-package-lock web-push@3.6.7
       - name: Send today's highlights
+        if: steps.gate.outputs.send == 'true'
         env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' }}
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           PUSH_SENDER_KEY: ${{ secrets.PUSH_SENDER_KEY }}
@@ -28,3 +42,10 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: node scripts/daily-push.js
+      # GitHub switches off scheduled workflows in repos with no commits for
+      # 60 days. Re-enabling once a day, right after the push, keeps it alive.
+      - name: Keep the schedule alive
+        if: steps.gate.outputs.send == 'true' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/daily-review.yml/enable" || true

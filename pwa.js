@@ -25,6 +25,41 @@
   let sub = null;
   let busy = false;
   let note = null; // { text, kind }
+  let pushTime = '08:00';   // shared by every phone; stored in the public settings table
+  let timeSaving = false;
+
+  function timeOptions(selected) {
+    let html = '';
+    for (let m = 0; m < 24 * 60; m += 15) {
+      const t = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+      html += '<option value="' + t + '"' + (t === selected ? ' selected' : '') + '>' + t + '</option>';
+    }
+    if (!/:(00|15|30|45)$/.test(selected)) html = '<option value="' + selected + '" selected>' + selected + '</option>' + html;
+    return html;
+  }
+
+  async function loadPushTime() {
+    try {
+      const { data, error } = await sb.from('settings').select('value').eq('key', 'push_time').maybeSingle();
+      if (!error && data && /^\d{2}:\d{2}$/.test(data.value)) pushTime = data.value;
+    } catch (e) { /* keep the default */ }
+  }
+
+  async function savePushTime(t) {
+    if (!/^\d{2}:\d{2}$/.test(t) || timeSaving) return;
+    const before = pushTime;
+    pushTime = t; timeSaving = true; note = { text: '儲存中…', kind: '' }; render();
+    try {
+      const { error } = await sb.rpc('set_setting', { pw: storedPassword, p_key: 'push_time', p_value: t });
+      if (error) throw error;
+      note = { text: '改好了。從下一次開始在 ' + t + ' 左右送出。', kind: 'ok' };
+    } catch (err) {
+      pushTime = before;
+      note = { text: '改不了：' + friendlyError(err), kind: 'err' };
+    } finally {
+      timeSaving = false; render();
+    }
+  }
 
   function b64uToBytes(s) {
     const pad = '='.repeat((4 - (s.length % 4)) % 4);
@@ -79,16 +114,25 @@
         buttons = '<button class="x-btn small primary" data-push="on">開啟通知</button>';
         break;
       case 'on':
-        text = '這支手機已開啟。每天早上 8 點會收到今日回顧。';
+        text = '這支手機已開啟。每天 ' + pushTime + ' 左右會收到今日回顧，可能晚幾分鐘。';
         buttons = '<button class="x-btn small" data-push="test">送一則測試</button>'
           + '<button class="x-btn small" data-push="off">關閉</button>';
         break;
     }
     if (busy) buttons = '<span class="x-note">處理中…</span>';
+    const unlocked = isPrivate && storedPassword;
+    const timeCtl = unlocked
+      ? '<select class="push-time" id="pushTime" aria-label="推播時間"' + (timeSaving ? ' disabled' : '') + '>' + timeOptions(pushTime) + '</select>'
+      : '<span class="push-time-ro">' + esc(pushTime) + '</span>';
     row.innerHTML = `
       <div class="x-row">
         <span class="x-note">手機通知</span>
         ${buttons}
+      </div>
+      <div class="x-row" style="margin-top:10px">
+        <span class="x-note">推播時間</span>
+        ${timeCtl}
+        <span class="x-note">${unlocked ? '每 15 分鐘一格' : '解鎖 Private 後可以改'}</span>
       </div>
       <p class="review-scope-status ${s === 'on' ? 'ok' : ''}">${esc(text)}</p>
       ${note ? `<p class="x-status ${note.kind || ''}" style="margin:4px 0 0">${esc(note.text)}</p>` : ''}`;
@@ -151,7 +195,7 @@
     if (!reg) return;
     try {
       await reg.showNotification('Unwind · 測試通知', {
-        body: '通知可以正常顯示。每天早上 8 點會收到今日回顧。',
+        body: '通知可以正常顯示。每天 ' + pushTime + ' 左右會收到今日回顧。',
         icon: 'icons/icon-192.png',
         badge: 'icons/badge-96.png',
         tag: 'unwind-test',
@@ -163,6 +207,10 @@
     }
     render();
   }
+
+  document.addEventListener('change', e => {
+    if (e.target && e.target.id === 'pushTime') savePushTime(e.target.value);
+  });
 
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-push]');
@@ -197,6 +245,7 @@
 
   async function start() {
     render();
+    loadPushTime().then(render);
     if (!('serviceWorker' in navigator)) return;
     try {
       reg = await navigator.serviceWorker.register('sw.js');

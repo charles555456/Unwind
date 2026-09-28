@@ -428,3 +428,18 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Called by the sender after the day's push went out, so the next
+-- 15-minute wake-up skips. Stored in the public settings table as a
+-- plain date, which reveals nothing.
+CREATE OR REPLACE FUNCTION mark_daily_push(p_key TEXT, p_day TEXT)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT push_sender_ok(p_key) THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  IF p_day !~ '^\d{4}-\d{2}-\d{2}$' THEN RAISE EXCEPTION 'bad day'; END IF;
+  INSERT INTO settings (key, value, updated_at) VALUES ('push_last_sent', to_jsonb(p_day), now())
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+END;
+$$;

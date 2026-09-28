@@ -158,3 +158,10 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 
 /* app notifications row reuses .x-row / .review-scope-status */
 #pushRow .x-row { gap: 8px; }
+.push-time {
+  padding: 6px 10px; font-size: 16px; font-family: inherit;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text-primary); outline: none;
+}
+.push-time:focus { border-color: var(--text-tertiary); }
+.push-time-ro { font-size: 14px; color: var(--text-primary); font-variant-numeric: tabular-nums; }

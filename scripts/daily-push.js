@@ -12,6 +12,13 @@
  * SITE_URL      where the notification should open (default: the GitHub Pages site)
  * COUNT         how many highlights to include (default 3)
  * REVIEW_SCOPE  'all' or 'recent'; overrides the choice saved from the Review page
+ * PUSH_TIME     'HH:MM' Taipei time; overrides the time saved from the Review page
+ * FORCE         'true' sends right now, ignoring the time and whether today's
+ *               push already went out, and does not count as today's push
+ *
+ * Timing: the workflow wakes every 15 minutes. A run sends only when the
+ * chosen time has passed and today's push has not gone out yet, then marks
+ * the day as done. `--check` only answers "is it time?" for the workflow.
  *
  * The scope normally comes from the site: the Review page stores it in the
  * public `settings` table, and this script reads it from there.
@@ -42,19 +49,47 @@ function clip(s, max) {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
-async function readScope() {
-  if (process.env.REVIEW_SCOPE) return process.env.REVIEW_SCOPE === 'recent' ? 'recent' : 'all';
+const DEFAULT_TIME = '08:00';
+
+function validTime(t) {
+  return typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : null;
+}
+
+// Public settings saved from the site. Missing table or network trouble
+// falls back to the defaults, so the push still goes out.
+async function readSettings() {
+  const out = { scope: 'all', time: DEFAULT_TIME, lastSent: '' };
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/settings?key=eq.review_scope&select=value', {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/settings?key=in.(review_scope,push_time,push_last_sent)&select=key,value', {
       headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON },
       signal: AbortSignal.timeout(8000)
     });
-    if (!res.ok) return 'all'; // table not created yet, or Supabase unreachable
-    const rows = await res.json();
-    return rows[0] && rows[0].value === 'recent' ? 'recent' : 'all';
-  } catch (e) {
-    return 'all';
-  }
+    if (res.ok) {
+      for (const row of await res.json()) {
+        if (row.key === 'review_scope') out.scope = row.value === 'recent' ? 'recent' : 'all';
+        if (row.key === 'push_time') out.time = validTime(row.value) || DEFAULT_TIME;
+        if (row.key === 'push_last_sent') out.lastSent = String(row.value || '');
+      }
+    }
+  } catch (e) { /* keep defaults */ }
+  if (process.env.REVIEW_SCOPE) out.scope = process.env.REVIEW_SCOPE === 'recent' ? 'recent' : 'all';
+  if (validTime(process.env.PUSH_TIME)) out.time = process.env.PUSH_TIME;
+  return out;
+}
+
+// Minutes since midnight in Asia/Taipei
+function taipeiMinutes(d) {
+  const t = new Date((d || new Date()).getTime() + 8 * 3600 * 1000);
+  return t.getUTCHours() * 60 + t.getUTCMinutes();
+}
+
+function decide(settings, day, force) {
+  if (force) return { send: true, why: 'forced' };
+  const [h, m] = settings.time.split(':').map(Number);
+  const now = taipeiMinutes();
+  if (settings.lastSent === day) return { send: false, why: 'already sent today' };
+  if (now < h * 60 + m) return { send: false, why: 'not yet (' + settings.time + ')' };
+  return { send: true, why: 'due (' + settings.time + ')' };
 }
 
 async function supabaseRpc(name, args) {
@@ -135,9 +170,20 @@ async function sendTelegram(title, body, click) {
 }
 
 (async () => {
-  const books = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'kobo-highlights.json'), 'utf8'));
   const day = taipeiDate();
-  const scope = await readScope();
+  const force = process.env.FORCE === 'true' || process.env.FORCE === '1';
+  const settings = await readSettings();
+  const gate = decide(settings, day, force);
+  console.log('time ' + settings.time + ' · last sent ' + (settings.lastSent || 'never') + ' · ' + gate.why);
+
+  if (process.argv.includes('--check')) {
+    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'send=' + gate.send + '\n');
+    return;
+  }
+  if (!gate.send) return;
+
+  const books = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'kobo-highlights.json'), 'utf8'));
+  const scope = settings.scope;
   const result = daily(books, day, scope, 5);
   const picks = result.items.slice(0, COUNT);
   console.log('scope: ' + scope + (result.fallback ? ' (nothing in the last 14 days, using the full library)' : ''));
@@ -172,10 +218,17 @@ async function sendTelegram(title, body, click) {
     return;
   }
 
-  let failed = false;
+  let failed = false, sent = 0;
   for (const [name, job] of jobs) {
-    try { await job; console.log('sent via ' + name); }
+    try { await job; sent++; console.log('sent via ' + name); }
     catch (e) { failed = true; console.error(name + ' failed: ' + e.message); }
+  }
+
+  // Count the day as done once anything went out, so the next 15-minute
+  // wake-up does not send it again. A forced test run never counts.
+  if (sent && !force && process.env.PUSH_SENDER_KEY) {
+    try { await supabaseRpc('mark_daily_push', { p_key: process.env.PUSH_SENDER_KEY, p_day: day }); }
+    catch (e) { failed = true; console.error('could not mark today as sent: ' + e.message); }
   }
   if (failed) process.exit(1);
 })();
