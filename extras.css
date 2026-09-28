@@ -155,3 +155,6 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
   .reader-content { font-size: 16.5px; line-height: 1.9; }
   .x-panel { padding: 18px; }
 }
+
+/* app notifications row reuses .x-row / .review-scope-status */
+#pushRow .x-row { gap: 8px; }

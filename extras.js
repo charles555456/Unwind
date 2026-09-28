@@ -315,7 +315,18 @@
   // ─────────────────────────────────────────────────────────
   //  Read Later
   // ─────────────────────────────────────────────────────────
-  const later = { view: 'list', tab: 'unread', articles: [], highlights: [], current: null, currentHl: [], busy: false, status: null };
+  const later = { view: 'list', tab: 'unread', articles: [], highlights: [], current: null, currentHl: [], busy: false, status: null, pendingUrl: '' };
+
+  // Android "Share → Unwind" arrives as ?shared_url=…&shared_text=…
+  // Remember the link, clean the address bar, and open Read Later.
+  (function takeShare() {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('shared_url') && !params.has('shared_text') && !params.has('shared_title')) return;
+    const text = [params.get('shared_url'), params.get('shared_text'), params.get('shared_title')].filter(Boolean).join(' ');
+    const m = text.match(/https?:\/\/[^\s<>"']+/i);
+    try { history.replaceState(null, '', location.pathname + (m ? '#later' : '')); } catch (e) {}
+    if (m) later.pendingUrl = m[0];
+  })();
 
   function laterStatus(text, kind) {
     later.status = text ? { text, kind: kind || '' } : null;
@@ -327,8 +338,8 @@
     const body = q('#laterBody');
     if (!body) return;
     if (!isPrivate || !storedPassword) {
-      q('#laterSubtitle').textContent = '稍後閱讀';
-      body.innerHTML = lockedHtml('存下來的文章和劃線');
+      q('#laterSubtitle').textContent = later.pendingUrl ? '有一個分享進來的網址' : '稍後閱讀';
+      body.innerHTML = lockedHtml(later.pendingUrl ? '解鎖後會自動存下分享的網址。存下來的文章和劃線' : '存下來的文章和劃線');
       return;
     }
     if (later.view === 'reader' && later.current) { renderReader(); return; }
@@ -379,6 +390,12 @@
           </div>
         </button>`).join('')
         : `<p class="x-note" style="padding:28px 0">${later.tab === 'archived' ? '沒有封存的文章。' : '還沒有文章。貼上網址存第一篇。'}</p>`;
+    }
+
+    if (later.pendingUrl && !later.busy) {
+      const shared = later.pendingUrl;
+      later.pendingUrl = '';
+      setTimeout(() => saveArticle(shared), 0);
     }
 
     body.innerHTML = `
@@ -971,6 +988,9 @@
   window.renderPrivate = function () {
     baseRenderPrivate();
     document.body.classList.toggle('is-private', !!isPrivate);
+    if (isPrivate && later.pendingUrl && typeof currentPage !== 'undefined' && currentPage !== 'later') {
+      setTimeout(() => window.navigate('later'), 0);
+    }
     if (!isPrivate) {
       later.articles = []; later.highlights = []; later.current = null; later.view = 'list';
       inbox.items = []; inbox.config = null; inbox.current = null; inbox.view = 'list'; inbox.syncedOnce = false;

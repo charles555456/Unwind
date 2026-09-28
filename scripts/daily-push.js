@@ -3,6 +3,8 @@
  * Sends today's Daily Review as a push notification.
  *
  * Channels are enabled by whichever secrets are present:
+ *   VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY + PUSH_SENDER_KEY
+ *                                              -> the Unwind home-screen app
  *   NTFY_TOPIC                                 -> ntfy.sh (or NTFY_SERVER)
  *   TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID      -> Telegram
  * With neither set, the message is printed and nothing is sent.
@@ -25,6 +27,17 @@ const SUPABASE_ANON = process.env.SUPABASE_ANON || 'sb_publishable_2WDf4cHELLvK_
 const SITE_URL = (process.env.SITE_URL || 'https://charles555456.github.io/Unwind/').replace(/\/?$/, '/');
 const COUNT = Math.max(1, Math.min(5, parseInt(process.env.COUNT || '3', 10) || 3));
 
+// Publishers pad titles with sales copy in trailing brackets.
+function shortTitle(title) {
+  let t = String(title || '').trim();
+  for (let i = 0; i < 3; i++) {
+    const cut = t.replace(/\s*[（(【\[][^（）()【】\[\]]*[）)】\]]\s*$/, '').trim();
+    if (cut === t || cut.length < 2) break;
+    t = cut;
+  }
+  return t;
+}
+
 function clip(s, max) {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
@@ -43,6 +56,59 @@ async function readScope() {
     return 'all';
   }
 }
+
+async function supabaseRpc(name, args) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON,
+      Authorization: 'Bearer ' + SUPABASE_ANON,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(args),
+    signal: AbortSignal.timeout(15000)
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(name + ' responded ' + res.status + ': ' + text.slice(0, 300));
+  return text ? JSON.parse(text) : null;
+}
+
+// Web push to every phone that turned notifications on in the app.
+async function sendApp(title, body, click) {
+  let webpush;
+  try { webpush = require('web-push'); }
+  catch (e) { throw new Error('web-push is not installed (npm install web-push)'); }
+  webpush.setVapidDetails(SITE_URL, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+
+  const key = process.env.PUSH_SENDER_KEY;
+  const subs = (await supabaseRpc('get_push_subscriptions', { p_key: key })) || [];
+  if (!subs.length) {
+    console.log('app: no phone has turned notifications on yet');
+    return;
+  }
+  const payload = JSON.stringify({ title, body: appBody, url: click, tag: 'unwind-daily' });
+  let delivered = 0, dropped = 0, failed = 0;
+  for (const s of subs) {
+    const target = { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } };
+    try {
+      await webpush.sendNotification(target, payload, { TTL: 6 * 3600, urgency: 'normal' });
+      delivered++;
+      await supabaseRpc('report_push_result', { p_key: key, p_endpoint: s.endpoint, p_ok: true }).catch(() => {});
+    } catch (e) {
+      if (e.statusCode === 404 || e.statusCode === 410) {
+        dropped++;
+        await supabaseRpc('report_push_result', { p_key: key, p_endpoint: s.endpoint, p_ok: false }).catch(() => {});
+      } else {
+        failed++;
+        console.error('app push failed (' + (e.statusCode || 'no status') + '): ' + (e.body || e.message));
+      }
+    }
+  }
+  console.log('app: delivered ' + delivered + ', removed ' + dropped + ' stale, failed ' + failed);
+  if (failed && !delivered) throw new Error('no phone accepted the push');
+}
+
+let appBody = '';
 
 async function sendNtfy(title, body, click) {
   const server = (process.env.NTFY_SERVER || 'https://ntfy.sh').replace(/\/$/, '');
@@ -87,13 +153,22 @@ async function sendTelegram(title, body, click) {
     .join('\n\n');
   const click = SITE_URL + '#review';
 
+  // A phone notification shows a few lines, so keep each quote short there.
+  appBody = picks
+    .map(h => '「' + clip(h.text.replace(/\s*\n\s*/g, ' '), 70) + '」— ' + clip(shortTitle(h.bookTitle).split(/[：:]/)[0], 24))
+    .join('\n');
+
   const jobs = [];
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.PUSH_SENDER_KEY) {
+    jobs.push(['app', sendApp(title, body, click)]);
+  }
   if (process.env.NTFY_TOPIC) jobs.push(['ntfy', sendNtfy(title, body, click)]);
   if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) jobs.push(['telegram', sendTelegram(title, body, click)]);
 
   if (!jobs.length) {
     console.log('[dry run — no channel configured]\n');
     console.log(title + '\n\n' + body + '\n\n' + click);
+    console.log('\n[app notification body]\n' + appBody);
     return;
   }
 

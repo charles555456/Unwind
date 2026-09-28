@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════
 --  Unwind — Migration v3
---  Review scope sync · Read Later · Newsletter inbox
+--  Review scope sync · Read Later · Newsletter inbox · App notifications
 --
 --  Run once in the Supabase SQL Editor. Safe to run again.
 --  Contains no secrets. Every write and every private read goes
@@ -8,6 +8,7 @@
 -- ═══════════════════════════════════════════════════════════
 
 CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- ───────────────────────────────────────────────────────────
 --  1. Public settings (nothing sensitive: the Review scope)
@@ -343,5 +344,87 @@ AS $$
 BEGIN
   IF NOT verify_pw(pw) THEN RAISE EXCEPTION 'unauthorized'; END IF;
   DELETE FROM inbox WHERE inbox.id = p_id;
+END;
+$$;
+
+-- ───────────────────────────────────────────────────────────
+--  6. App notifications
+--     Each phone that turns on notifications leaves one row here.
+--     Adding or removing a phone needs the site password.
+--     The daily sender reads the list with its own key.
+-- ───────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  last_success_at TIMESTAMPTZ
+);
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- The sender key lives only in GitHub secrets. This is its SHA-256.
+-- The key is 32 random bytes, so the hash cannot be turned back into it.
+CREATE OR REPLACE FUNCTION push_sender_ok(p_key TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  RETURN p_key IS NOT NULL
+     AND encode(extensions.digest(p_key, 'sha256'), 'hex') = '108f4fab48cdc935c49c7a63534353fbe8b8b3148a359716a26845959f5a4822';
+END;
+$$;
+REVOKE ALL ON FUNCTION push_sender_ok(TEXT) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION add_push_subscription(
+  pw TEXT, p_endpoint TEXT, p_p256dh TEXT, p_auth TEXT, p_user_agent TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT verify_pw(pw) THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  IF p_endpoint !~* '^https://' THEN RAISE EXCEPTION 'bad endpoint'; END IF;
+  INSERT INTO push_subscriptions (endpoint, p256dh, auth, user_agent)
+  VALUES (p_endpoint, p_p256dh, p_auth, left(COALESCE(p_user_agent, ''), 300))
+  ON CONFLICT (endpoint) DO UPDATE SET
+    p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth, user_agent = EXCLUDED.user_agent;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION remove_push_subscription(pw TEXT, p_endpoint TEXT)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT verify_pw(pw) THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  DELETE FROM push_subscriptions WHERE endpoint = p_endpoint;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_push_subscriptions(p_key TEXT)
+RETURNS TABLE (endpoint TEXT, p256dh TEXT, auth TEXT)
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT push_sender_ok(p_key) THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  RETURN QUERY SELECT s.endpoint, s.p256dh, s.auth FROM push_subscriptions s ORDER BY s.id;
+END;
+$$;
+
+-- p_ok true: delivered. p_ok false: the phone no longer accepts it, so forget it.
+CREATE OR REPLACE FUNCTION report_push_result(p_key TEXT, p_endpoint TEXT, p_ok BOOLEAN)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT push_sender_ok(p_key) THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  IF p_ok THEN
+    UPDATE push_subscriptions SET last_success_at = now() WHERE endpoint = p_endpoint;
+  ELSE
+    DELETE FROM push_subscriptions WHERE endpoint = p_endpoint;
+  END IF;
 END;
 $$;
