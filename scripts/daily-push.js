@@ -9,7 +9,7 @@
  *   TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID      -> Telegram
  * With neither set, the message is printed and nothing is sent.
  *
- * SITE_URL      where the notification should open (default: the GitHub Pages site)
+ * SITE_URL      where the notification should open (default: the site's custom domain)
  * COUNT         how many highlights to include (default 3)
  * REVIEW_SCOPE  'all' or 'recent'; overrides the choice saved from the Review page
  * PUSH_TIME     'HH:MM' Taipei time; overrides the time saved from the Review page
@@ -31,7 +31,7 @@ const { daily, taipeiDate } = require('../review-pick.js');
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://zoriszrkgoqfqorudcth.supabase.co';
 const SUPABASE_ANON = process.env.SUPABASE_ANON || 'sb_publishable_2WDf4cHELLvK_EWEWwKKwA_WJ_6vTBq';
 
-const SITE_URL = (process.env.SITE_URL || 'https://charles555456.github.io/Unwind/').replace(/\/?$/, '/');
+const SITE_URL = (process.env.SITE_URL || 'https://theunwindpath.com/').replace(/\/?$/, '/');
 const COUNT = Math.max(1, Math.min(5, parseInt(process.env.COUNT || '3', 10) || 3));
 
 // Publishers pad titles with sales copy in trailing brackets.
