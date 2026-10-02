@@ -976,8 +976,15 @@
   // ─────────────────────────────────────────────────────────
   //  Hooks into the main script
   // ─────────────────────────────────────────────────────────
+  // Pages only shown once Private is unlocked. A locked visit (link, #hash,
+  // PWA shortcut, push notification) goes to the unlock page and comes back
+  // to the requested page after a successful unlock.
+  const PRIVATE_PAGES = new Set(['highlights', 'review', 'reading', 'problem']);
+  let pendingPage = null;
+
   const baseNavigate = window.navigate;
   window.navigate = function (page) {
+    if (PRIVATE_PAGES.has(page) && !isPrivate) { pendingPage = page; page = 'private'; }
     hideSelBar();
     baseNavigate(page);
     if (page === 'later') { later.view = 'list'; later.current = null; later.status = null; renderLater(); }
@@ -990,6 +997,10 @@
     document.body.classList.toggle('is-private', !!isPrivate);
     if (isPrivate && later.pendingUrl && typeof currentPage !== 'undefined' && currentPage !== 'later') {
       setTimeout(() => window.navigate('later'), 0);
+    } else if (isPrivate && pendingPage) {
+      const target = pendingPage;
+      pendingPage = null;
+      setTimeout(() => window.navigate(target), 0);
     }
     if (!isPrivate) {
       later.articles = []; later.highlights = []; later.current = null; later.view = 'list';

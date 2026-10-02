@@ -1422,13 +1422,13 @@
     <!-- ─── Navigation ─── -->
     <nav>
       <button class="active" data-page="home">Home</button>
+      <button data-page="projects">Projects</button>
       <button data-page="stream">Stream</button>
       <button data-page="writing">Writing</button>
-      <button data-page="highlights">Highlights</button>
-      <button data-page="review">Review</button>
-      <button data-page="reading">Reading</button>
-      <button data-page="problem">Problems</button>
-      <button data-page="projects">Projects</button>
+      <button data-page="highlights" class="private-only">Highlights</button>
+      <button data-page="review" class="private-only">Review</button>
+      <button data-page="reading" class="private-only">Reading</button>
+      <button data-page="problem" class="private-only">Problems</button>
       <button data-page="later" class="private-only">Later</button>
       <button data-page="inbox" class="private-only">Inbox</button>
       <div class="nav-spacer"></div>
@@ -1443,12 +1443,12 @@
           <button class="hero-brand" data-page="home">charlesshen</button>
           <div class="hero-nav">
             <button class="hero-link active" data-page="home">Home</button>
+            <button class="hero-link" data-page="projects">Projects</button>
             <button class="hero-link" data-page="stream">Stream</button>
             <button class="hero-link" data-page="writing">Writing</button>
-            <button class="hero-link" data-page="highlights">Highlights</button>
-            <button class="hero-link" data-page="review">Review</button>
-            <button class="hero-link" data-page="problem">Problems</button>
-            <button class="hero-link" data-page="projects">Projects</button>
+            <button class="hero-link private-only" data-page="highlights">Highlights</button>
+            <button class="hero-link private-only" data-page="review">Review</button>
+            <button class="hero-link private-only" data-page="problem">Problems</button>
           </div>
         </div>
         <div class="hero-body">
@@ -2208,7 +2208,7 @@ function renderGraph() {
     const id = 'w_' + w.id;
     nodes.push({ id, label: w.title.slice(0, 20), type: 'writing', tags: w.tags || [], x: W/2 + (Math.random()-0.5)*300, y: H/2 + (Math.random()-0.5)*300, vx: 0, vy: 0 });
   });
-  HIGHLIGHTS.filter(show).forEach(h => {
+  (isPrivate ? HIGHLIGHTS : []).filter(show).forEach(h => {
     const id = 'h_' + h.id;
     nodes.push({ id, label: h.title.slice(0, 20), type: 'highlight', tags: [], x: W/2 + (Math.random()-0.5)*300, y: H/2 + (Math.random()-0.5)*300, vx: 0, vy: 0 });
   });
