@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="影片重點：用發射燃料起步，再用輸入／輸出系統讓自律變成身份。">
+<title>發射燃料與軌道</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --ink:#151B26; --muted:#5B6577; --line:#D7DCE4;
+  --flame:#D9481F; --flame-soft:#FBE6DE; --orbit:#2B59C3; --orbit-soft:#E1E9FA;
+  --serif:"Noto Serif TC","Songti TC",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F131B; --surface:#171C27; --ink:#E6EAF1; --muted:#98A2B5; --line:#2A3242;
+    --flame:#FF7A4D; --flame-soft:#3A2019; --orbit:#7FA2F5; --orbit-soft:#1C2744;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F131B; --surface:#171C27; --ink:#E6EAF1; --muted:#98A2B5; --line:#2A3242;
+  --flame:#FF7A4D; --flame-soft:#3A2019; --orbit:#7FA2F5; --orbit-soft:#1C2744;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.75;padding-inline:16px;padding-block:40px 64px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+a{color:inherit}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:clamp(2rem,6vw,2.9rem);font-weight:900}
+h2{font-size:1.6rem;font-weight:900}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0}
+.eyebrow{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ts{font-family:var(--mono);font-size:.75rem;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.ts:hover,.ts:focus-visible{color:var(--ink);border-color:var(--ink);outline:none}
+header{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:1.1rem;color:var(--muted);max-width:60ch}
+.lede strong{color:var(--ink)}
+
+/* fuel gauge */
+.gauge{display:flex;flex-direction:column;gap:10px;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.bar{display:flex;height:34px;border-radius:6px;overflow:hidden;font-family:var(--mono);font-size:.8rem}
+.bar span{display:flex;align-items:center;padding-inline:10px;white-space:nowrap}
+.bar .burn{flex:0 0 88%;background:var(--flame);color:#fff}
+.bar .coast{flex:1;background:var(--orbit-soft);color:var(--orbit)}
+.gauge small{color:var(--muted);font-size:.85rem}
+
+.thesis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.thesis div{padding:16px;border-top:3px solid var(--flame);background:var(--surface)}
+.thesis div+div{border-top-color:var(--orbit)}
+.thesis b{display:block;font-family:var(--serif);font-size:1.05rem;margin-bottom:4px}
+.thesis p{color:var(--muted);font-size:.93rem}
+
+section{display:flex;flex-direction:column;gap:20px}
+.stage-tag{display:inline-flex;align-self:flex-start;font-family:var(--mono);font-size:.75rem;padding:3px 10px;border-radius:99px}
+.s1 .stage-tag{background:var(--flame-soft);color:var(--flame)}
+.s2 .stage-tag{background:var(--orbit-soft);color:var(--orbit)}
+
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{display:grid;grid-template-columns:1fr auto;gap:4px 16px;padding:16px 0;border-bottom:1px solid var(--line)}
+.list li:first-child{border-top:1px solid var(--line)}
+.list li p{grid-column:1/-1;color:var(--muted);font-size:.95rem}
+
+blockquote{margin:0;padding:4px 0 4px 18px;border-left:2px solid var(--line);font-family:var(--serif);font-size:1.05rem}
+blockquote cite{display:block;font-family:var(--sans);font-style:normal;font-size:.82rem;color:var(--muted);margin-top:6px}
+
+.loop{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;counter-reset:step}
+.loop div{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;gap:6px}
+.loop div::before{counter-increment:step;content:counter(step);font-family:var(--mono);font-size:.75rem;color:var(--orbit)}
+.loop b{font-family:var(--serif)}
+.loop p{font-size:.85rem;color:var(--muted);line-height:1.6}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-weight:500;font-size:.75rem;color:var(--muted);letter-spacing:.05em}
+td:first-child{font-weight:700;white-space:nowrap}
+
+.callout{padding:20px;border-radius:10px;background:var(--orbit-soft);display:flex;flex-direction:column;gap:8px}
+.callout h3{color:var(--orbit)}
+.note{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+
+@media (max-width:560px){
+  .thesis{grid-template-columns:1fr}
+  .loop{grid-template-columns:1fr 1fr}
+  .bar .burn{flex-basis:80%}
+}
+</style>
+</head>
+<body>
+<article>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">YouTube 重點整理 · 26 分鐘 · <a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw" target="_blank" rel="noopener">看原片</a></span>
+  <h1>自律不是意志力，<br>是身份。</h1>
+  <p class="lede">為什麼你總是「衝兩週就放棄」？影片的答案：<strong>讓你起步的東西，不是讓你持續的東西。</strong>改變分兩段——先用強烈燃料把自己「發射」出去，再趁燃料還在，把系統建好，讓好行為變成「我本來就是這樣的人」。</p>
+</header>
+
+<div class="gauge" aria-label="火箭燃料比例">
+  <span class="eyebrow">火箭類比 <a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=123s" target="_blank" rel="noopener">02:03</a></span>
+  <div class="bar"><span class="burn">發射＋加速：85–90% 的質量是燃料</span><span class="coast">入軌：≈0</span></div>
+  <small>起步極度耗能；一旦進入軌道，滑行幾乎不需要燃料。改變也一樣。</small>
+</div>
+
+<div class="thesis">
+  <div><b>第一階段 · 發射燃料</b><p>痛苦、厭惡、壓力或一股衝勁——粗暴地把自己推離舊生活。</p></div>
+  <div><b>第二階段 · 軌道系統</b><p>改寫「輸入」與「輸出」，讓新行為自動發生，不再需要燃料。</p></div>
+</div>
+
+<section class="s1">
+  <span class="stage-tag">STAGE 1 · LAUNCH FUEL</span>
+  <h2>先找到夠猛的燃料</h2>
+  <p>成功者不是「忍著」去健身、早睡、工作——對他們來說，退回平庸才是痛苦。要複製這點，你得先對現狀厭惡到「只能贏」。</p>
+  <ul class="list">
+    <li><h3>戰術性壓力 Tactical Stress</h3><a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=216s" target="_blank" rel="noopener">03:36</a>
+      <p>主動把自己放進「非成不可」的處境。例：搬進付不起的公寓，逼自己把生意做到付得起。作者稱這是他最強的財務成長 hack——也承認很極端，不適合所有人。</p></li>
+    <li><h3>反願景 Anti-vision</h3><a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=321s" target="_blank" rel="noopener">05:21</a>
+      <p>具體描繪你「絕對不要」的人生，拿現在的行為去對照。作者以前偶爾狂歡一次，隔天那種「進度在流失」的感覺反而成了下個月的燃料。</p></li>
+    <li><h3>本週作業：觀察一般人的終點</h3><a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=372s" target="_blank" rel="noopener">06:12</a>
+      <p>花一週觀察社會的「預設結局」：財務吃緊、身體走樣、被責任綁住。認真想一週，看看肚子裡有沒有燒起來。</p></li>
+  </ul>
+  <p class="note" style="border:0;padding:0">重新框架、接納現狀是好技能，但它不會改變你的現實。兩者可以並存。</p>
+</section>
+
+<section class="s2">
+  <span class="stage-tag">STAGE 2 · ORBIT SYSTEM</span>
+  <h2>自律是身份的副產品</h2>
+  <p>如果你不主動塑造自己，作息、目標、願景都會被「指派」給你。當你全心專注一個目標，偏離它的選項會自然變得無感——作者減脂期時，麥當勞不是誘惑，是根本不想吃。<a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=485s" target="_blank" rel="noopener">08:05</a></p>
+
+  <blockquote>更在意你現在的軌跡，而不是現在的成績。<cite>作者引用 James Clear 的觀點（意譯）<a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=719s" target="_blank" rel="noopener">11:59</a></cite></blockquote>
+
+  <p><strong>身份 ＝ 輸入 × 輸出的累積。</strong>輸入塑造你如何看世界、做決定；輸出塑造你的生活，而生活又產生下一輪輸入。這是一個會複利的回饋迴圈。</p>
+
+  <h3>改寫輸入：策展你的心智環境 <a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=791s" target="_blank" rel="noopener">13:11</a></h3>
+  <ul class="list">
+    <li><h3>1. 資訊飲食</h3><a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=835s" target="_blank" rel="noopener">13:55</a>
+      <p>多數人「知識肥胖」。取消追蹤會拉低標準的內容，追蹤能拉高標準的人與想法。你的動態牆也是一個會影響你的環境。</p></li>
+    <li><h3>2. 身邊的人</h3><a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=963s" target="_blank" rel="noopener">16:03</a>
+      <p>他們對「什麼正常、什麼不可能」的假設會滲進你。最難的一步：不想被幫的人很難帶著走。</p></li>
+    <li><h3>3. 審問舊信念</h3><a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=979s" target="_blank" rel="noopener">16:19</a>
+      <p>你對金錢、自己值得什麼、能做到什麼的信念，多半在懂事前就被裝進來了。沒檢查過，就還在運作。</p></li>
+    <li><h3>4. 被動換主動</h3><a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=1019s" target="_blank" rel="noopener">16:59</a>
+      <p>快速滑 10 篇貼文 vs. 慢讀一本書——差距巨大。你大概說不出昨天滑過的任何兩則貼文。</p></li>
+  </ul>
+
+  <h3>改寫輸出：四步習慣迴圈 <a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=1113s" target="_blank" rel="noopener">18:33</a></h3>
+  <p style="color:var(--muted);font-size:.93rem">即行為心理學的「提示 → 反應 → 獎勵」（Skinner、《為什麼我們這樣生活》、《原子習慣》）。</p>
+  <div class="loop">
+    <div><b>環境</b><p>讓想要的行為是阻力最小的路，不想要的極度不便。</p></div>
+    <div><b>訊號</b><p>設一個每天固定觸發行為的提示。</p></div>
+    <div><b>行為</b><p>把成功門檻降到「最小可辨識版本」——走進健身房就算。</p></div>
+    <div><b>回報</b><p>每次做完立刻給一個愉快獎勵，直到行為本身就是獎勵。</p></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">兩個實例 <a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=1198s" target="_blank" rel="noopener">19:58</a> <a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=1316s" target="_blank" rel="noopener">21:56</a></span>
+  <h2>套用到健身與創作事業</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>步驟</th><th>去健身房</th><th>把興趣／寫作變成事業</th></tr></thead>
+      <tbody>
+        <tr><td>輸入</td><td>追 2–3 個激勵＋教學來源，散步時聽；退追販賣焦慮的健身內容；至少一個有在練的朋友</td><td>追想模仿的創作者與思考者；讀做到的人寫的書；在留言區結交同路人（作者和合夥人就是 Twitter 上認識的）</td></tr>
+        <tr><td>信念</td><td>檢查你對自己身體能力的預設</td><td>檢查你對金錢的信念：賺錢難嗎？致富是運氣還是技能？</td></tr>
+        <tr><td>環境</td><td>前一晚放好衣服、清掉垃圾食物、先看明天要練的動作</td><td>點子收集 app 放桌面捷徑、寫作 app 常開；最難最重要的事排早上</td></tr>
+        <tr><td>訊號</td><td>每天同一時間（作者約 11:00），用專屬鬧鈴聲</td><td>早上第一杯咖啡、或固定一首開工歌——別只靠靈感</td></tr>
+        <tr><td>行為</td><td>只承諾做一組硬組，人到了通常會繼續</td><td>每天一篇貼文、每週一封電子報，求發出去，不求完美</td></tr>
+        <tr><td>回報</td><td>練完買一杯蛋白奶昔</td><td>完成 2–3 件要事後出門散步，之後才吃早餐</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="callout">
+  <h3>一句話帶走</h3>
+  <p>被激勵或被噁心到都行——別浪費那股燃料。趁它還在，把環境、訊號、最小行為、獎勵建好，直到自律變成「我就是這樣的人」。<a class="ts" href="https://www.youtube.com/watch?v=oMtAfbNHfnw&t=1464s" target="_blank" rel="noopener">24:24</a></p>
+</div>
+
+<p class="note">影片含業配：作者自家產品 Eden（知識管理／創作工具，約 14:40 起）與 Sonder（益智補充品，24:45 起）。作者自己也說這些不是必要的，上面重點已排除。</p>
+
+</div>
+</article>
+</body>
+</html>
