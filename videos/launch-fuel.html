@@ -93,6 +93,14 @@ td:first-child{font-weight:700;white-space:nowrap}
   .loop{grid-template-columns:1fr 1fr}
   .bar .burn{flex-basis:80%}
 }
+
+/* action guide */
+.actions{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:act}
+.actions li{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.actions li::before{counter-increment:act;content:counter(act);grid-row:1/span 3;font-family:var(--serif);font-weight:900;font-size:1.6rem;line-height:1;color:var(--flame)}
+.actions .when{font-family:var(--mono);font-size:.75rem;color:var(--orbit)}
+.actions p{color:var(--muted);font-size:.95rem}
+.actions p b{color:var(--ink);font-weight:700}
 </style>
 </head>
 <body>
@@ -179,6 +187,19 @@ td:first-child{font-weight:700;white-space:nowrap}
       </tbody>
     </table>
   </div>
+</section>
+
+<section>
+  <span class="eyebrow">行動指南 · 讀完就做</span>
+  <h2>三件事，從今晚開始</h2>
+  <ol class="actions">
+    <li><h3>寫下你的「反願景」</h3><span class="when">今晚 · 15 分鐘 · 第一階段：燃料</span>
+      <p>拿一張紙寫：<b>如果照現在的習慣再過 5 年，我的身體、錢包、作息、關係會長怎樣？</b>寫得越具體越好，寫到你不舒服為止。最後一行寫「我拒絕這個版本」，拍照設成手機桌布，或存在 Unwind 裡每天看得到的地方。</p></li>
+    <li><h3>挑一個目標，套四步迴圈</h3><span class="when">明天開始 · 每天 5 分鐘起跳 · 第二階段：系統</span>
+      <p>只挑一個（例：每日交易覆盤）。<b>環境</b>：前一晚把 TradingView 和筆記開好；<b>訊號</b>：每天固定時間，例如收盤後第一杯咖啡；<b>最小行為</b>：只標一張圖、寫一個 setup；<b>回報</b>：做完才准滑手機或出門散步。連續 7 天不斷，再把門檻往上加。</p></li>
+    <li><h3>做一次輸入大掃除</h3><span class="when">本週 · 30 分鐘 · 第二階段：輸入</span>
+      <p>取消追蹤 10 個讓你焦慮或拉低標準的帳號，追蹤 2–3 個已經活成你想要樣子的人。之後<b>把 Read Later 當主要輸入</b>：想滑動態時，改成讀一篇存下來的長文，劃一條線、做一張圖卡——被動消費換成主動吸收。</p></li>
+  </ol>
 </section>
 
 <div class="callout">
