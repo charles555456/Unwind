@@ -165,3 +165,14 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 }
 .push-time:focus { border-color: var(--text-tertiary); }
 .push-time-ro { font-size: 14px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+/* Libraries.dev effects (vendor/unwind-fx.js) */
+.fx-orb { display: inline-block; width: 20px; height: 20px; vertical-align: middle; flex: none; }
+.fx-orb:empty { width: 0; }                       /* no gap before the file has loaded */
+.x-loading { display: flex; align-items: center; gap: 10px; }
+.x-status .fx-orb { margin-right: 8px; }
+.fx-host { position: relative; isolation: isolate; }
+.x-input-host { display: block; flex: 1 1 240px; min-width: 0; }
+.x-input-host .x-input { width: 100%; }
+.fx-beam { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .fx-beam { display: none; } }

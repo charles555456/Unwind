@@ -14,6 +14,25 @@
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const q = (s, root) => (root || document).querySelector(s);
+
+  // Thinking orbs + border beam (Libraries.dev, MIT). Loaded after the page,
+  // so text shows first and the orb appears beside it once the file arrives.
+  (function loadFx() {
+    const go = () => {
+      if (document.querySelector('script[data-unwind-fx]')) return;
+      const el = document.createElement('script');
+      el.type = 'module';
+      el.src = 'vendor/unwind-fx.js';
+      el.dataset.unwindFx = '';
+      document.head.appendChild(el);
+    };
+    if (document.readyState === 'complete') setTimeout(go, 0);
+    else window.addEventListener('load', () => setTimeout(go, 0));
+  })();
+
+  const orb = state => '<span class="fx-orb" data-orb="' + state + '"></span>';
+  const loadingHtml = (text, state) => '<p class="x-note x-loading">' + orb(state || 'breathing') + (text || '載入中') + '</p>';
+  const statusHtml = st => st ? (st.orb ? orb(st.orb) : '') + esc(st.text) : '';
   const qa = (s, root) => Array.from((root || document).querySelectorAll(s));
 
   const READABILITY_SRC = 'https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.js';
@@ -328,10 +347,10 @@
     if (m) later.pendingUrl = m[0];
   })();
 
-  function laterStatus(text, kind) {
-    later.status = text ? { text, kind: kind || '' } : null;
+  function laterStatus(text, kind, orbState) {
+    later.status = text ? { text, kind: kind || '', orb: orbState || '' } : null;
     const el = q('#laterStatus');
-    if (el) { el.textContent = text || ''; el.className = 'x-status ' + (kind || ''); }
+    if (el) { el.innerHTML = statusHtml(later.status); el.className = 'x-status ' + (kind || ''); }
   }
 
   async function renderLater() {
@@ -344,7 +363,7 @@
     }
     if (later.view === 'reader' && later.current) { renderReader(); return; }
 
-    body.innerHTML = '<p class="x-note">載入中…</p>';
+    body.innerHTML = loadingHtml('載入中');
     try {
       const [arts, hls] = await Promise.all([rpc('get_articles'), rpc('get_article_highlights')]);
       later.articles = arts || [];
@@ -400,10 +419,10 @@
 
     body.innerHTML = `
       <div class="x-row">
-        <input class="x-input" id="laterUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="貼上文章網址">
+        <span class="fx-host x-input-host" data-fx-beam="line" data-fx-beam-strength="0.7"><input class="x-input" id="laterUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="貼上文章網址"></span>
         <button class="x-btn primary" id="laterSave">儲存</button>
       </div>
-      <div class="x-status ${later.status ? later.status.kind : ''}" id="laterStatus">${later.status ? esc(later.status.text) : ''}</div>
+      <div class="x-status ${later.status ? later.status.kind : ''}" id="laterStatus">${statusHtml(later.status)}</div>
       <div class="x-tabs">
         <button class="review-tab ${later.tab === 'unread' ? 'active' : ''}" data-later-tab="unread">待讀 ${unread.length || ''}</button>
         <button class="review-tab ${later.tab === 'highlights' ? 'active' : ''}" data-later-tab="highlights">劃線 ${later.highlights.length || ''}</button>
@@ -421,7 +440,7 @@
     later.busy = true;
     const btn = q('#laterSave');
     if (btn) btn.disabled = true;
-    laterStatus('抓取文章中…');
+    laterStatus('抓取文章中', '', 'searching');
     try {
       const res = await rpc('fetch_url', { p_url: url });
       if (!res || !res.content) throw new Error('對方沒有回傳內容');
@@ -462,7 +481,7 @@
 
   async function openArticle(id) {
     const body = q('#laterBody');
-    body.innerHTML = '<p class="x-note">載入中…</p>';
+    body.innerHTML = loadingHtml('載入中');
     try {
       await loadScript(PURIFY_SRC);
       const art = await rpc('get_article', { p_id: id });
@@ -628,10 +647,10 @@
   // ─────────────────────────────────────────────────────────
   const inbox = { view: 'list', tab: 'new', items: [], config: null, current: null, status: null, syncing: false, syncedOnce: false };
 
-  function inboxStatus(text, kind) {
-    inbox.status = text ? { text, kind: kind || '' } : null;
+  function inboxStatus(text, kind, orbState) {
+    inbox.status = text ? { text, kind: kind || '', orb: orbState || '' } : null;
     const el = q('#inboxStatus');
-    if (el) { el.textContent = text || ''; el.className = 'x-status ' + (kind || ''); }
+    if (el) { el.innerHTML = statusHtml(inbox.status); el.className = 'x-status ' + (kind || ''); }
   }
 
   async function renderInbox() {
@@ -644,7 +663,7 @@
     }
     if (inbox.view === 'item' && inbox.current) { drawMail(); return; }
 
-    body.innerHTML = '<p class="x-note">載入中…</p>';
+    body.innerHTML = loadingHtml('載入中');
     try {
       const [settings, items] = await Promise.all([rpc('get_private_settings'), rpc('get_inbox')]);
       const row = (settings || []).find(s => s.key === 'newsletter');
@@ -705,7 +724,7 @@
         <button class="review-tab" id="inboxSync">同步</button>
         <button class="review-tab" id="inboxEditConfig">設定</button>
       </div>
-      <div class="x-status ${inbox.status ? inbox.status.kind : ''}" id="inboxStatus">${inbox.status ? esc(inbox.status.text) : ''}</div>
+      <div class="x-status ${inbox.status ? inbox.status.kind : ''}" id="inboxStatus">${statusHtml(inbox.status)}</div>
       <div>${list.length ? list.map(i => `
         <button class="x-item ${i.read_at ? 'read' : ''}" data-inbox-open="${i.id}">
           <div class="x-item-title">${i.read_at ? '' : '<span class="x-dot"></span>'}${esc(i.title || '(無標題)')}</div>
@@ -752,7 +771,7 @@
   async function syncInbox() {
     if (inbox.syncing || !inbox.config || !inbox.config.feed) return;
     inbox.syncing = true;
-    inboxStatus('同步中…');
+    inboxStatus('同步電子報', '', 'connecting');
     try {
       const res = await rpc('fetch_url', { p_url: inbox.config.feed });
       if (!res || res.status >= 400 || !res.content) throw new Error('feed 回應 ' + (res ? res.status : '空白'));
@@ -780,7 +799,7 @@
 
   async function openMail(id) {
     const body = q('#inboxBody');
-    body.innerHTML = '<p class="x-note">載入中…</p>';
+    body.innerHTML = loadingHtml('載入中');
     try {
       await loadScript(PURIFY_SRC);
       const item = await rpc('get_inbox_item', { p_id: id });
@@ -838,7 +857,7 @@
   async function mailToLater() {
     const m = inbox.current;
     if (!m) return;
-    inboxStatus('轉存中…');
+    inboxStatus('轉存中', '', 'weaving');
     try {
       await loadScript(PURIFY_SRC);
       const clean = sanitize(m.content);
@@ -920,7 +939,7 @@
     if (t.closest('#inboxSaveConfig')) {
       const feed = q('#inboxFeed').value.trim(), email = q('#inboxEmail').value.trim();
       if (!/^https:\/\/\S+/i.test(feed)) { inboxStatus('feed 網址要以 https:// 開頭。', 'err'); return; }
-      inboxStatus('儲存中…');
+      inboxStatus('儲存中', '', 'breathing');
       try {
         await rpc('set_private_setting', { p_key: 'newsletter', p_value: { feed, email } });
         inbox.syncedOnce = false; inbox.status = null;

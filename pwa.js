@@ -111,7 +111,7 @@
         break;
       case 'off':
         text = '這支手機還沒開通知。';
-        buttons = '<button class="x-btn small primary" data-push="on">開啟通知</button>';
+        buttons = '<button class="x-btn small primary fx-host" data-push="on" data-fx-beam="sm">開啟通知</button>';
         break;
       case 'on':
         text = '這支手機已開啟。每天 ' + pushTime + ' 左右會收到今日回顧，可能晚幾分鐘。';
@@ -119,7 +119,7 @@
           + '<button class="x-btn small" data-push="off">關閉</button>';
         break;
     }
-    if (busy) buttons = '<span class="x-note">處理中…</span>';
+    if (busy) buttons = '<span class="x-note x-loading"><span class="fx-orb" data-orb="working"></span>處理中</span>';
     const unlocked = isPrivate && storedPassword;
     const timeCtl = unlocked
       ? '<select class="push-time" id="pushTime" aria-label="推播時間"' + (timeSaving ? ' disabled' : '') + '>' + timeOptions(pushTime) + '</select>'
