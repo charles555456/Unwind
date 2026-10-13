@@ -205,3 +205,20 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
   .astro canvas { width: 150px !important; height: auto !important; }
   .astro-bubble { font-size: 14px; padding: 10px 13px; }
 }
+
+/* Projects art (page-art.js) */
+.proj-art { margin: 4px 0 44px; }
+.proj-art canvas { display: block; width: 100%; }
+.proj-art-title {
+  margin-top: 4px; text-align: center; font-weight: 400; color: var(--text-primary);
+  font-size: clamp(24px, 4.2vw, 34px); line-height: 1.12; letter-spacing: -0.01em;
+}
+.proj-art-title span { display: block; font-weight: 500; }
+.proj-art-title em { display: block; font-family: 'Instrument Serif', Georgia, serif; font-style: normal; font-size: 1.28em; letter-spacing: 0; }
+
+/* Stream backdrop (page-art.js) */
+.stream-art {
+  position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1;
+  pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
+}
+.stream-art.on { opacity: 1; }
