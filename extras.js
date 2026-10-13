@@ -30,6 +30,15 @@
     else window.addEventListener('load', () => setTimeout(go, 0));
   })();
 
+  // The Private page's astronaut (astronaut.js) — plain script, no deps.
+  (function loadAstronaut() {
+    if (document.querySelector('script[data-unwind-astro]')) return;
+    const el = document.createElement('script');
+    el.src = 'astronaut.js';
+    el.dataset.unwindAstro = '';
+    document.head.appendChild(el);
+  })();
+
   const orb = state => '<span class="fx-orb" data-orb="' + state + '"></span>';
   const loadingHtml = (text, state) => '<p class="x-note x-loading">' + orb(state || 'breathing') + (text || '載入中') + '</p>';
   const statusHtml = st => st ? (st.orb ? orb(st.orb) : '') + esc(st.text) : '';
