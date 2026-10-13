@@ -202,6 +202,6 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 @media (prefers-reduced-motion: reduce) { .astro-pop { animation: none; } }
 @media (max-width: 480px) {
   .astro { gap: 6px; margin-bottom: 20px; }
-  .astro canvas { width: 138px !important; height: auto !important; }
+  .astro canvas { width: 150px !important; height: auto !important; }
   .astro-bubble { font-size: 14px; padding: 10px 13px; }
 }
