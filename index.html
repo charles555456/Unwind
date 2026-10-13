@@ -311,20 +311,38 @@
     .prob-hit, .prob-del { background: none; border: none; cursor: pointer; font-family: inherit; color: var(--text-tertiary); font-size: 13px; padding: 2px 4px; }
     .prob-hit:hover { color: var(--text-primary); }
     .prob-del:hover { color: #c44; }
-    .proj-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
-    @media (max-width: 640px) { .proj-grid { grid-template-columns: 1fr; } }
+    /* Projects — static grid (filter tabs + image cards) */
+    .proj-tabs { display: flex; gap: 22px; flex-wrap: wrap; padding-bottom: 14px; margin: 4px 0 28px; border-bottom: 1px solid var(--border); }
+    .proj-tabs button { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 17px; color: var(--text-tertiary); transition: color 0.2s; }
+    .proj-tabs button:hover, .proj-tabs button.on { color: var(--text-primary); }
+    .proj-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 16px; }
+    @media (max-width: 640px) { .proj-grid { grid-template-columns: 1fr; gap: 32px; } }
     .proj-card { display: block; color: inherit; text-decoration: none; }
-    .proj-thumb { aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: var(--hover-bg); }
-    .proj-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; }
-    a.proj-card:hover .proj-thumb img { transform: scale(1.03); }
-    .proj-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 12px; }
-    .proj-name { font-size: 16px; font-weight: 500; color: var(--text-primary); }
-    .proj-meta { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 12px; color: var(--text-tertiary); }
-    .proj-status::before { content: "●"; margin-right: 5px; }
-    .proj-status.building { color: #3aa07e; }
-    .proj-status.live { color: var(--text-primary); }
-    .proj-status.paused { color: var(--text-tertiary); }
-    .proj-desc { margin-top: 4px; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+    .proj-card[hidden] { display: none; }
+    .proj-thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--hover-bg); }
+    .proj-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .proj-arrow { position: absolute; top: 10px; right: 12px; font-size: 13px; line-height: 1; color: #e4572e; }
+    .proj-hit { display: block; color: inherit; text-decoration: none; }
+    .proj-hit:hover .proj-name { text-decoration: underline; text-underline-offset: 3px; }
+    .proj-links { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+    .proj-links a { font-size: 13px; color: var(--text-tertiary); text-decoration: none; }
+    .proj-links a:hover { color: var(--text-primary); }
+    .proj-name { display: block; margin-top: 14px; font-size: 16px; font-weight: 500; color: var(--text-primary); }
+    .proj-desc { margin-top: 4px; font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); }
+    .proj-card.has-gallery { grid-column: 1 / -1; }
+    .proj-screens { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; padding: 16px; background: var(--hover-bg); }
+    .proj-screens figure { margin: 0; }
+    .proj-screens img { width: 100%; height: auto; display: block; border-radius: 8px; }
+    .proj-screens figcaption { margin-top: 8px; font-size: 11px; color: var(--text-tertiary); text-align: center; }
+    @media (max-width: 640px) {
+      .proj-screens { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
+      .proj-screens figure { flex: 0 0 42%; scroll-snap-align: start; }
+    }
+    .proj-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+    .proj-pill { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); }
+    .proj-pill.live::before, .proj-pill.building::before { content: "●"; margin-right: 4px; }
+    .proj-pill.building::before { color: #3aa07e; }
+    .proj-pill.live::before { color: var(--text-primary); }
     .prob-empty { color: var(--text-tertiary); font-size: 14px; padding: 32px 0; text-align: center; }
 
     .section-label {
@@ -1746,9 +1764,8 @@
     </div>
 
     <!-- ═══════════════ PROJECTS ═══════════════ -->
-    <!-- 編輯專案：直接改下面的 proj-card。縮圖放 projects/（16:10，約 800×500）。
-         狀態 class：building / live / paused。
-         要加連結：把 <div class="proj-card"> 換成 <a class="proj-card" href="..." target="_blank" rel="noopener">（結尾 </div> 也換成 </a>） -->
+    <!-- 編輯專案：改下面 script 裡的 PROJECTS 陣列。縮圖放 projects/（16:10，約 800×500）。
+         status：building / live / paused。url 留空 = 不顯示連結。 -->
     <div class="page" id="page-projects">
       <div class="page-sig" data-page="home"><img src="illustration.png" alt=""><span>Unwind · charlesshen</span></div>
       <div class="page-header">
@@ -1757,48 +1774,8 @@
           <p class="page-subtitle">正在做的事 —— 產品、空間、交易。</p>
         </div>
       </div>
-      <div class="proj-grid" id="projList">
-        <div class="proj-card">
-          <div class="proj-thumb"><img src="projects/cut.jpg" alt="DinoCut" loading="lazy"></div>
-          <div class="proj-head">
-            <span class="proj-name">DinoCut</span>
-            <span class="proj-meta"><span>App</span><span class="proj-status building">進行中</span></span>
-          </div>
-          <p class="proj-desc">減脂追蹤 app：把吃、睡、練的每日打卡包裝成爬山探險 + 養夥伴寵物。雙用戶（Charles / Coco）。</p>
-        </div>
-        <div class="proj-card">
-          <div class="proj-thumb"><img src="projects/yet-pos.jpg" alt="yet POS" loading="lazy"></div>
-          <div class="proj-head">
-            <span class="proj-name">yet POS</span>
-            <span class="proj-meta"><span>App</span><span class="proj-status building">進行中</span></span>
-          </div>
-          <p class="proj-desc">yet coffee 的點餐 / 收銀系統，Next.js + Supabase。</p>
-        </div>
-        <div class="proj-card">
-          <div class="proj-thumb"><img src="projects/timebox.jpg" alt="Timebox" loading="lazy"></div>
-          <div class="proj-head">
-            <span class="proj-name">Timebox</span>
-            <span class="proj-meta"><span>App</span><span class="proj-status building">進行中</span></span>
-          </div>
-          <p class="proj-desc">Timeboxing 時間盒規劃 app：每件事給一個固定時段，在盒子裡做完。</p>
-        </div>
-        <div class="proj-card">
-          <div class="proj-thumb"><img src="projects/deep-work.jpg" alt="yet coffee × Deep Work" loading="lazy"></div>
-          <div class="proj-head">
-            <span class="proj-name">yet coffee × Deep Work</span>
-            <span class="proj-meta"><span>Space</span><span class="proj-status live">運作中</span></span>
-          </div>
-          <p class="proj-desc">在 yet coffee 舉辦的深度工作時段 —— 安靜的空間、一段完整的時間、一杯好咖啡。</p>
-        </div>
-        <div class="proj-card">
-          <div class="proj-thumb"><img src="projects/trading.jpg" alt="Price Action Trading" loading="lazy"></div>
-          <div class="proj-head">
-            <span class="proj-name">Price Action Trading</span>
-            <span class="proj-meta"><span>Trading</span><span class="proj-status building">進行中</span></span>
-          </div>
-          <p class="proj-desc">用 Al Brooks price action 讀日經 225：Entry Ledger 交易紀錄、缺口研究、規則手冊。</p>
-        </div>
-      </div>
+      <div class="proj-tabs" id="projTabs"></div>
+      <div class="proj-grid" id="projGrid"></div>
     </div>
 
     <!-- ─── Footer ─── -->
@@ -3499,6 +3476,68 @@ streamTextarea.addEventListener('drop', (e) => {
   }
   build();
   if(!reduce) requestAnimationFrame(loop);
+})();
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  PROJECTS — static grid
+// ═══════════════════════════════════════════════════════════
+(() => {
+  const PROJECTS = [
+    { img: 'cut',       name: 'DinoCut',                tag: 'App',     status: 'building', url: '',
+      desc: '減脂追蹤 app：把吃、睡、練的每日打卡包裝成爬山探險 + 養夥伴寵物。',
+      // gallery：有的話，卡片佔滿整列並排顯示各頁截圖（projects/ 底下的路徑，不含 .jpg）
+      gallery: [['dinocut/home', '首頁'], ['dinocut/workout', '訓練'], ['dinocut/templates', '模板'], ['dinocut/you', '夥伴']] },
+    { img: 'yet-pos',   name: 'yet POS',                tag: 'App',     status: 'building', url: '',
+      desc: 'yet coffee 的點餐 / 收銀系統，Next.js + Supabase。' },
+    { img: 'timebox',   name: 'Timebox',                tag: 'App',     status: 'building', url: 'https://timebox.run',
+      desc: 'Timeboxing 時間盒規劃 app：每件事給一個固定時段，在盒子裡做完。' },
+    { img: 'deep-work', name: 'yet coffee × Deep Work', tag: 'Space',   status: 'live',     url: 'https://theyetproject.com', ig: 'theyetproject',
+      desc: '在 yet coffee 的深度工作時段 —— 安靜的空間、完整的時間、一杯好咖啡。' ,
+      gallery: [['yet/seats', '即時空位'], ['yet/instagram', 'Instagram']] },
+    { img: 'trading',   name: 'Price Action Trading',   tag: 'Trading', status: 'building', url: '',
+      desc: '用 Al Brooks price action 讀日經 225：交易紀錄、缺口研究、規則手冊。' },
+  ];
+  const LABEL = { building: '進行中', live: '運作中', paused: '暫停' };
+  const grid = document.getElementById('projGrid');
+  const tabs = document.getElementById('projTabs');
+  if (!grid) return;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const cards = PROJECTS.map(p => {
+    const el = document.createElement('div');
+    el.className = 'proj-card' + (p.gallery ? ' has-gallery' : '') + (p.url ? ' has-url' : '');
+    el.dataset.tag = p.tag;
+    const open = p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" class="proj-hit">` : '';
+    const shut = p.url ? '</a>' : '';
+    const links = [
+      p.url && `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ''))} ↗</a>`,
+      p.ig && `<a href="https://www.instagram.com/${esc(p.ig)}/" target="_blank" rel="noopener">Instagram @${esc(p.ig)} ↗</a>`,
+    ].filter(Boolean).join('');
+    el.innerHTML = `
+      ${p.gallery
+        ? `<div class="proj-screens">${p.gallery.map(([src, cap]) => `<figure><img src="projects/${src}.jpg" alt="${esc(p.name)} — ${esc(cap)}" loading="lazy"><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>`
+        : `${open}<div class="proj-thumb"><img src="projects/${p.img}.jpg" alt="${esc(p.name)}" loading="lazy">${p.url ? '<span class="proj-arrow">↗</span>' : ''}</div>${shut}`}
+      ${open}<span class="proj-name">${esc(p.name)}</span>${shut}
+      <p class="proj-desc">${esc(p.desc)}</p>
+      ${links ? `<div class="proj-links">${links}</div>` : ''}
+      <div class="proj-pills"><span class="proj-pill">${esc(p.tag)}</span><span class="proj-pill ${p.status}">${LABEL[p.status] || ''}</span></div>`;
+    grid.appendChild(el);
+    return el;
+  });
+
+
+  const filters = ['All', ...new Set(PROJECTS.map(p => p.tag))];
+  filters.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.textContent = f;
+    if (i === 0) b.classList.add('on');
+    b.addEventListener('click', () => {
+      tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      cards.forEach(c => { c.hidden = f !== 'All' && c.dataset.tag !== f; });
+    });
+    tabs.appendChild(b);
+  });
 })();
 </script>
 </body>
