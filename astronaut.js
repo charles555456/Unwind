@@ -3,10 +3,11 @@
  * page and talks about what is happening there.
  *
  * Drawn like the home page sphere: a few thousand points sampled on simple
- * 3D solids, sized and faded by depth, with loose dust around it. On first
- * view the points gather out of a scattered cloud. Motion stays small: a
- * slow sway and float, a glint across the visor, and one full turn when
- * tapped or when you unlock.
+ * 3D solids, seen side-on and lit from the upper left. The far side keeps
+ * coming apart into square fragments that drift right and fade into a faint
+ * mosaic. On first view the points gather out of a scattered cloud; tapping
+ * it, or unlocking, pulls the fragments home for a moment before they let
+ * go again.
  * Inserted by script, so index.html needs no markup for it.
  */
 (function () {
@@ -14,10 +15,13 @@
 
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ── the figure: a point cloud on simple 3D solids, drawn like the home sphere ──
-  const CSS_W = 240, CSS_H = 320;
-  const SCALE = 128;                       // px per model unit; the figure is ~2 units tall
-  const CX = CSS_W / 2, CY = CSS_H / 2 + 6;
+  // ── the figure: a point cloud on simple 3D solids, seen side-on ──
+  // The lit side reads as small blocky strokes; the far side breaks into
+  // square fragments that drift off to the right and fade.
+  const CSS_W = 280, CSS_H = 380;
+  const SCALE = 205;                       // px per model unit
+  const CX = 112, CY = 214;                // where the model origin lands on the canvas
+  const PIX = 3;                           // fragment grid, px
 
   const rnd = (a, b) => a + Math.random() * (b - a);
   const norm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
@@ -26,28 +30,24 @@
     return [r * Math.cos(th), u, r * Math.sin(th)];
   }
 
-  // Solids. y points down, z toward the viewer. p > 2 makes an ellipsoid boxier.
+  // Solids. y points down, z toward the viewer before the turn. p > 2 is boxier.
   const ell = (c, r, p, n, tag) => ({ type: 'ell', c, r, p: p || 2, n, tag });
   const cap = (a, b, r, n, tag) => ({ type: 'cap', a, b, r, n, tag });
   const SOLIDS = [
-    ell([0, -0.66, 0.02], [0.27, 0.27, 0.27], 2, 900, 'helmet'),
-    ell([0, -0.40, 0], [0.21, 0.05, 0.19], 2, 120, 'ring'),
-    ell([0, -0.08, 0], [0.31, 0.34, 0.21], 3.2, 900, 'torso'),
-    ell([0, -0.10, 0.2], [0.15, 0.1, 0.05], 4, 110, 'chest'),
-    ell([0, -0.12, -0.25], [0.29, 0.33, 0.12], 4, 380, 'pack'),
-    cap([-0.35, -0.27, 0], [-0.47, 0.03, 0.06], 0.085, 170, 'arm'),
-    cap([-0.47, 0.03, 0.06], [-0.40, 0.30, 0.16], 0.078, 150, 'arm'),
-    ell([-0.39, 0.37, 0.18], [0.075, 0.085, 0.07], 2, 70, 'glove'),
-    cap([0.35, -0.27, 0], [0.53, -0.06, 0.06], 0.085, 170, 'arm'),
-    cap([0.53, -0.06, 0.06], [0.60, -0.33, 0.17], 0.078, 150, 'arm'),
-    ell([0.61, -0.41, 0.19], [0.075, 0.085, 0.07], 2, 70, 'glove'),
-    ell([0, 0.27, 0], [0.27, 0.07, 0.19], 2.6, 120, 'belt'),
-    cap([-0.13, 0.30, 0], [-0.17, 0.60, 0.09], 0.11, 230, 'leg'),
-    cap([-0.17, 0.60, 0.09], [-0.12, 0.90, 0.0], 0.095, 200, 'leg'),
-    ell([-0.12, 0.96, 0.05], [0.1, 0.06, 0.15], 2.8, 110, 'boot'),
-    cap([0.13, 0.30, 0], [0.21, 0.56, 0.14], 0.11, 230, 'leg'),
-    cap([0.21, 0.56, 0.14], [0.24, 0.84, -0.04], 0.095, 200, 'leg'),
-    ell([0.25, 0.90, 0.0], [0.1, 0.06, 0.15], 2.8, 110, 'boot')
+    ell([0, -0.66, 0.02], [0.27, 0.27, 0.27], 2, 1500, 'helmet'),
+    ell([0, -0.40, 0], [0.22, 0.055, 0.2], 2, 220, 'ring'),
+    ell([0, -0.08, 0], [0.31, 0.34, 0.21], 3.2, 1500, 'torso'),
+    ell([0, -0.10, 0.2], [0.15, 0.1, 0.05], 4, 220, 'chest'),
+    ell([0, -0.12, -0.25], [0.29, 0.33, 0.12], 4, 600, 'pack'),
+    cap([-0.35, -0.27, 0], [-0.43, 0.04, 0.05], 0.088, 380, 'arm'),
+    cap([-0.43, 0.04, 0.05], [-0.40, 0.31, 0.13], 0.08, 340, 'arm'),
+    ell([-0.39, 0.38, 0.15], [0.078, 0.09, 0.07], 2, 140, 'glove'),
+    cap([0.35, -0.27, 0], [0.43, 0.04, 0.04], 0.088, 380, 'arm'),
+    cap([0.43, 0.04, 0.04], [0.41, 0.30, 0.12], 0.08, 340, 'arm'),
+    ell([0.40, 0.37, 0.14], [0.078, 0.09, 0.07], 2, 140, 'glove'),
+    ell([0, 0.27, 0], [0.28, 0.07, 0.2], 2.6, 220, 'belt'),
+    cap([-0.13, 0.30, 0], [-0.15, 0.62, 0.05], 0.115, 360, 'leg'),
+    cap([0.13, 0.30, 0], [0.16, 0.62, 0.06], 0.115, 360, 'leg')
   ];
 
   function inside(sol, q, pad) {
@@ -79,7 +79,9 @@
     return { pos: [sol.a[0] + ab[0] * t + n[0] * sol.r, sol.a[1] + ab[1] * t + n[1] * sol.r, sol.a[2] + ab[2] * t + n[2] * sol.r], n };
   }
 
-  const VISOR_DIR = norm([0.12, 0.08, 1]);
+  // A few fragments carry a trace of colour, as in a dissolving photograph.
+  const TINTS = [[120, 176, 196], [178, 82, 70]];
+  const VISOR_DIR = norm([0.12, 0.06, 1]);
   const POINTS = [];
   SOLIDS.forEach(sol => {
     let made = 0, tries = 0;
@@ -89,30 +91,45 @@
       let kind = 'suit';
       if (sol.tag === 'helmet') {
         const d = s.n[0] * VISOR_DIR[0] + s.n[1] * VISOR_DIR[1] + s.n[2] * VISOR_DIR[2];
-        if (d > 0.5 && s.n[1] > -0.62 && s.n[1] < 0.55) { kind = 'visor'; if (Math.random() < 0.55) continue; }
+        const inVisor = d > 0.42 && s.n[1] > -0.66 && s.n[1] < 0.6;
+        if (inVisor) kind = 'visor';
+        else if (d > 0.3 && s.n[1] > -0.78 && s.n[1] < 0.72) kind = 'frame';      // the visor's rim
       }
-      if (sol.tag === 'pack' || sol.tag === 'ring' || sol.tag === 'belt' || sol.tag === 'boot') kind = 'shade';
-      if (sol.tag === 'chest') kind = 'shade';
-      const big = Math.random();
+      if (sol.tag === 'pack' || sol.tag === 'ring' || sol.tag === 'belt' || sol.tag === 'chest') kind = 'shade';
+      const r = Math.random(), r2 = Math.random();
       POINTS.push({
         p: s.pos, n: s.n, kind,
-        sz: big < 0.84 ? rnd(0.7, 1.05) : big < 0.97 ? rnd(1.1, 1.6) : rnd(1.7, 2.2),
+        sz: r < 0.75 ? rnd(1.1, 1.8) : r < 0.95 ? rnd(1.9, 2.8) : rnd(3, 4),
         ph: rnd(0, Math.PI * 2),
-        from: (() => { const d = randDir(), r = rnd(0.9, 2.2); return [d[0] * r, d[1] * r, d[2] * r]; })(),
+        sp: rnd(0.05, 0.16),               // fragment drift speed
+        reach: rnd(30, 170),               // how far a fragment travels
+        lift: rnd(-14, 8),
+        fsz: PIX * (r2 < 0.6 ? 1 : r2 < 0.9 ? 2 : 3),
+        tint: Math.random() < 0.06 ? TINTS[Math.random() < 0.65 ? 0 : 1] : null,
+        cut: Math.random(),                // where along the edge this point lets go
+        from: (() => { const d = randDir(), rr = rnd(0.9, 2.2); return [d[0] * rr, d[1] * rr, d[2] * rr]; })(),
         delay: Math.random()
       });
       made++;
     }
   });
 
-  // loose dust around the figure, like the halo on the home page
-  const DUST = Array.from({ length: 140 }, () => {
-    const d = randDir(), r = rnd(1.05, 1.5);
-    return { p: [d[0] * r * 0.62, d[1] * r * 0.95, d[2] * r * 0.5], sz: rnd(0.5, 1.1), ph: rnd(0, Math.PI * 2), sp: rnd(0.3, 0.9) };
+  // a faint mosaic hanging to the right, where the fragments end up
+  const MOSAIC = Array.from({ length: 260 }, () => {
+    const x = CX + 30 + Math.pow(Math.random(), 0.8) * (CSS_W - CX - 26);
+    const r = Math.random();
+    return {
+      x: Math.round(x / (PIX * 2)) * PIX * 2, y: Math.round(rnd(20, CSS_H - 20) / (PIX * 2)) * PIX * 2,
+      s: PIX * (r < 0.55 ? 1 : r < 0.88 ? 2 : 3), ph: rnd(0, Math.PI * 2), sp: rnd(0.2, 0.8),
+      a: rnd(0.04, 0.16) * (1 - (x - CX) / (CSS_W - CX) * 0.6),
+      tint: Math.random() < 0.08 ? TINTS[Math.random() < 0.6 ? 0 : 1] : null
+    };
   });
 
-  const LIGHT_DIR = norm([-0.55, -0.7, 0.55]);
+  const LIGHT_DIR = norm([-0.62, -0.62, 0.48]);   // from the upper left, slightly in front
   const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const fract = x => x - Math.floor(x);
   const MORPH_MS = 2600;
 
   // ── what it says ──
@@ -171,7 +188,7 @@
     if (opts && opts.turn) turn();
   }
 
-  // one slow full turn, to show it is a solid thing
+  // pull the fragments home for a moment, then let them go again
   function turn() { if (!reduce) turnFrom = performance.now(); }
 
   function build() {
@@ -217,6 +234,24 @@
   }
 
   // ── drawing ──
+  const rgbaCache = {};
+  function rgba(c, a) {
+    const i = Math.round(Math.min(1, a) * 20);
+    if (i <= 0) return null;
+    const k = c[0] + ',' + c[1] + ',' + c[2] + ',' + i;
+    return rgbaCache[k] || (rgbaCache[k] = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (i / 20).toFixed(2) + ')');
+  }
+
+  // how whole the figure is: 0 dissolving as usual, 1 fully assembled
+  function wholeness(now) {
+    if (turnFrom < 0) return 0;
+    const k = (now - turnFrom) / 4200;
+    if (k >= 1) { turnFrom = -1; return 0; }
+    if (k < 0.2) return ease(k / 0.2);          // fragments fly home
+    if (k < 0.55) return 1;                     // hold
+    return 1 - ease((k - 0.55) / 0.45);         // let go again
+  }
+
   function draw(now) {
     if (!ctx || !styles.length) return;
     const t = now / 1000;
@@ -224,70 +259,79 @@
 
     if (bornAt < 0) bornAt = now;
     const gather = reduce ? 1 : Math.min(1, (now - bornAt) / MORPH_MS);
+    // the dissolve eases in after the figure has gathered
+    const settle = reduce ? 1 : smooth(0.75, 1, (now - bornAt) / (MORPH_MS + 1400));
+    const whole = reduce ? 0 : wholeness(now);
+    const loosen = settle * (1 - whole);
 
-    // slow sway, a full turn when tapped, a gentle float and roll
-    let yaw = reduce ? -0.35 : Math.sin(t * 0.32) * 0.42 - 0.18;
-    if (turnFrom >= 0) {
-      const k = (now - turnFrom) / 2600;
-      if (k >= 1) turnFrom = -1; else yaw += ease(k) * Math.PI * 2;
-    }
-    const pitch = 0.1 + (reduce ? 0 : Math.sin(t * 0.45) * 0.04);
-    const roll = reduce ? 0 : Math.sin(t * 0.27) * 0.06;
-    const fy = reduce ? 0 : Math.sin(t * 0.55) * 6;
-    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), cr = Math.cos(roll), sr = Math.sin(roll);
-    const light = LIGHT_DIR;
-    // glint sweeping across the visor every ~7 s
-    const cycle = (t % 7) / 7;
-    const glint = !reduce && cycle < 0.18 ? cycle / 0.18 : -1;
+    const yaw = 0.78 + (reduce ? 0 : Math.sin(t * 0.25) * 0.07);
+    const pitch = 0.08 + (reduce ? 0 : Math.sin(t * 0.4) * 0.025);
+    const fy = reduce ? 0 : Math.sin(t * 0.5) * 4;
+    const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const L = LIGHT_DIR;
 
-    function project(q) {
-      let x = q[0] * cy + q[2] * sy, z = -q[0] * sy + q[2] * cy, y = q[1];
-      const y2 = y * cp - z * sp; z = y * sp + z * cp; y = y2;
-      const x2 = x * cr - y * sr; y = x * sr + y * cr; x = x2;
-      const f = 1 + 0.22 * z;
-      return [CX + x * SCALE * f, CY + fy + y * SCALE * f, z];
-    }
-    function rot(n) {
-      let x = n[0] * cy + n[2] * sy, z = -n[0] * sy + n[2] * cy, y = n[1];
-      const y2 = y * cp - z * sp; z = y * sp + z * cp;
-      return [x, y2, z];
-    }
+    // the edge where the suit lets go, wavering down its length
+    const edge = y => CX + 40 + Math.sin(y * 0.045 + t * 0.6) * 10 + Math.sin(y * 0.12 - t * 1.1) * 5 + Math.sin(y * 0.021 + t * 0.27) * 9;
 
-    // dust
-    for (const d of DUST) {
-      const q = project(d.p);
-      const depth = Math.max(0, Math.min(1, (q[2] + 1) / 2));
-      let a = (0.05 + 0.22 * depth) * (reduce ? 1 : 0.6 + 0.4 * Math.sin(t * d.sp + d.ph)) * gather;
-      const idx = Math.round(a * 20); if (idx <= 0) continue;
-      ctx.fillStyle = styles[idx];
-      ctx.fillRect(q[0], q[1], d.sz, d.sz);
+    // faint mosaic
+    for (const m of MOSAIC) {
+      const a = m.a * loosen * (reduce ? 1 : 0.55 + 0.45 * Math.sin(t * m.sp + m.ph)) * smooth(CSS_W - 2, CSS_W - 56, m.x);
+      const st = rgba(m.tint || ink, m.tint ? a * 0.8 : a);
+      if (!st) continue;
+      ctx.fillStyle = st;
+      ctx.fillRect(m.x, m.y, m.s, m.s);
     }
 
     for (const pt of POINTS) {
       const k = gather >= 1 ? 1 : ease(Math.max(0, Math.min(1, (gather - pt.delay * 0.35) / 0.65)));
       const src = k >= 1 ? pt.p : [pt.from[0] + (pt.p[0] - pt.from[0]) * k, pt.from[1] + (pt.p[1] - pt.from[1]) * k, pt.from[2] + (pt.p[2] - pt.from[2]) * k];
-      const q = project(src);
-      const n = rot(pt.n);
-      const depth = Math.max(0, Math.min(1, (q[2] + 0.8) / 1.6));
-      const lam = Math.max(0, n[0] * light[0] + n[1] * light[1] + n[2] * light[2]);
-      const rim = Math.pow(1 - Math.abs(n[2]), 3);          // silhouettes read brighter, like the sphere's edge
+      let x = src[0] * cyw + src[2] * syw, z = -src[0] * syw + src[2] * cyw, y = src[1];
+      const y2 = y * cp - z * sp; z = y * sp + z * cp; y = y2;
+      const f = 1 + 0.2 * z;
+      let px = CX + x * SCALE * f, py = CY + fy + y * SCALE * f;
+      if (py < -10 || py > CSS_H + 10) continue;
+
+      const nx = pt.n[0] * cyw + pt.n[2] * syw, nz0 = -pt.n[0] * syw + pt.n[2] * cyw, ny = pt.n[1] * cp - nz0 * sp, nz = pt.n[1] * sp + nz0 * cp;
+      if (nz < 0.04) continue;                     // no depth buffer: only surfaces facing us are drawn
+      const depth = Math.max(0, Math.min(1, (z + 0.6) / 1.2));
+      const lam = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]);
+      const rim = Math.pow(1 - Math.abs(nz), 3);
+
       let a;
       if (pt.kind === 'visor') {
-        a = 0.12 + 0.18 * depth;
-        if (glint >= 0) {
-          const band = (pt.n[0] - pt.n[1] * 0.8 + 1.2) / 2.4;    // 0..1 across the visor
-          a += 0.75 * Math.max(0, 1 - Math.abs(band - glint) / 0.09);
-        }
+        a = 0.05 + 0.08 * depth;
+        const refl = Math.max(0, 1 - Math.abs((pt.n[0] * 0.8 - pt.n[1]) - 0.55) / 0.12);   // one curved reflection
+        a += refl * 0.45 * depth;
+      } else if (pt.kind === 'frame') {
+        a = (0.35 + 0.6 * lam + 0.4 * rim) * (0.3 + 0.7 * depth);
       } else {
-        const base = pt.kind === 'shade' ? 0.55 : 0.92;
-        a = 1.3 * base * (0.22 + 0.55 * lam + 0.35 * rim) * (0.25 + 0.75 * depth);
+        const base = pt.kind === 'shade' ? 0.6 : 1;
+        a = 1.2 * base * (0.12 + 0.75 * lam + 0.25 * rim) * (0.3 + 0.7 * depth);
       }
-      if (!reduce) a *= 0.88 + 0.12 * Math.sin(t * 2 + pt.ph);
-      a *= k < 1 ? 0.4 + 0.6 * k : 1;
-      const idx = Math.round(Math.min(1, a) * 20); if (idx <= 0) continue;
-      const size = pt.sz * (0.7 + 0.5 * depth);
-      ctx.fillStyle = styles[idx];
-      ctx.fillRect(q[0], q[1], size, size);
+      if (!reduce) a *= 0.9 + 0.1 * Math.sin(t * 1.7 + pt.ph);
+      if (k < 1) a *= 0.4 + 0.6 * k;
+
+      // dissolve: how far past the edge this point sits
+      const past = (px - edge(py)) / 60;                                  // ~0 at the edge, 1 a body-width past it
+      const go = loosen * smooth(-0.25, 0.35, past + (pt.cut - 0.5) * 0.5);
+      if (go > 0.02) {
+        const life = reduce ? 0.5 : fract(t * pt.sp + pt.ph / 6.2832);
+        const travel = Math.pow(life, 1.25) * pt.reach * go;
+        const fx = px + travel;
+        const fyy = py + pt.lift * life * go + Math.sin(pt.ph * 3 + t * 0.6) * 3 * life;
+        const qx = Math.round(fx / PIX) * PIX, qy = Math.round(fyy / PIX) * PIX;
+        const edgeFade = smooth(CSS_W - 2, CSS_W - 56, qx) * smooth(2, 26, qy) * smooth(CSS_H - 2, CSS_H - 26, qy);
+        const fa = Math.max(a, 0.25) * Math.pow(1 - life, 1.3) * go * edgeFade;
+        const st = rgba(pt.tint || ink, pt.tint ? fa * 0.9 : fa);
+        if (st && qx < CSS_W) { ctx.fillStyle = st; ctx.fillRect(qx, qy, pt.fsz, pt.fsz); }
+        a *= 1 - go;                                                      // the solid fades as it lets go
+      }
+
+      const st = rgba(ink, a);
+      if (!st) continue;
+      ctx.fillStyle = st;
+      const w = pt.sz * (0.75 + 0.45 * depth);
+      ctx.fillRect(px, py, w * 1.35, w);                                  // short, wide strokes
     }
   }
 
