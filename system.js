@@ -1,12 +1,14 @@
 /*
- * System — the owner's life systems as a small solar system (Private only).
+ * System — the owner's life systems as a knowledge graph (Private only).
  *
- * Charles sits at the centre as Saturn (Voyager 2, NASA/JPL, public domain),
- * drawn as point dust. Each system is a satellite on an orbit in the plane
- * of the rings; tapping one opens its items as moons around it and an editor
- * below. The map lives only in the private database (private_settings key
- * "system_map"), read and written with the Private password; nothing about
- * it ships in the site's files.
+ * Charles is the node in the middle; each system is linked to him, and each
+ * item to its system. An item named under two systems becomes one node with
+ * two links, so overlaps show as bridges. Nodes are small point spheres like
+ * the home page; a force layout spreads them out on first view, then they
+ * barely sway. Hover lights a node and its neighbours, drag moves one, tap
+ * opens a system in the editor below. The map lives only in the private
+ * database (private_settings key "system_map"), read and written with the
+ * Private password; nothing about it ships in the site's files.
  *
  * Inserts its own nav button and page; index.html is unchanged.
  */
@@ -15,21 +17,20 @@
 
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const KEY = 'system_map';
-  const SATURN = 'art/saturn.bin';
-  const SATURN_ASPECT = 640 / 447;          // height / width of the point file
-  const RING_TILT = 56 * Math.PI / 180;     // the rings run from upper left to lower right
   const unlocked = () => typeof isPrivate !== 'undefined' && !!isPrivate && typeof storedPassword !== 'undefined' && !!storedPassword;
   const onPage = () => typeof currentPage !== 'undefined' && currentPage === 'system';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const uid = () => Math.random().toString(36).slice(2, 9);
 
   const st = {
-    page: null, wrap: null, back: null, front: null, saturnCv: null, panel: null, statusEl: null,
-    W: 0, H: 0, scene: null, map: null, loadState: 'idle', selected: null, hits: [],
-    raf: 0, running: false, last: 0, t0: 0, pausedAt: 0, drift: 0, saveTimer: 0, ink: [242, 242, 242]
+    page: null, wrap: null, cv: null, panel: null, statusEl: null,
+    W: 0, H: 0, map: null, loadState: 'idle', selected: null, hits: [],
+    nodes: null, edges: [], byId: null, alpha: 0, alphaTarget: 0, view: { s: 1, x: 0, y: 0 },
+    hover: null, press: null, dragging: null,
+    raf: 0, running: false, last: 0, saveTimer: 0, ink: [242, 242, 242]
   };
 
-  // ── a tiny point sphere, the home page's signature, for each satellite ──
+  // ── a tiny point sphere, the home page's signature, for each node ──
   function sphere(n) {
     const pts = [];
     while (pts.length < n) {
@@ -39,7 +40,7 @@
     }
     return pts;
   }
-  const SAT_PTS = sphere(70), MOON_PTS = sphere(28);
+  const CENTER_PTS = sphere(260), SAT_PTS = sphere(120);
 
   function drawSphere(ctx, pts, cx, cy, R, t, alpha) {
     const rot = reduce ? 0.5 : t * 0.6, c = Math.cos(rot), s = Math.sin(rot);
@@ -55,147 +56,181 @@
     }
   }
 
-  // ── layout ──
+  // ── the graph: Charles, the systems around him, their items ──
+  // An item with the same name under two systems is one node with two links,
+  // so what the systems share shows as a bridge between them.
+  const norm = s => String(s || '').trim().toLowerCase();
+  const SANS = 'Inter, "PingFang TC", "Noto Sans TC", sans-serif';
+  const FONTS = {
+    center: k => 'italic 400 ' + Math.round(24 * k) + 'px "Instrument Serif", Georgia, serif',
+    system: k => '500 ' + (13 * k).toFixed(1) + 'px ' + SANS,
+    item: k => '400 ' + (11.5 * k).toFixed(1) + 'px ' + SANS
+  };
+
+  function rebuild() {
+    const old = new Map((st.nodes || []).map(n => [n.id, n]));
+    const nodes = [], edges = [], byId = new Map();
+    const add = (id, kind, label, near) => {
+      let n = byId.get(id);
+      if (n) return n;
+      const was = old.get(id);
+      n = was || { id, x: (near ? near.x : 0) + (Math.random() - 0.5) * 12, y: (near ? near.y : 0) + (Math.random() - 0.5) * 12, vx: 0, vy: 0, ph: Math.random() * 6.28 };
+      n.kind = kind; n.label = label; n.sys = [];
+      n.r = kind === 'center' ? 18 : kind === 'system' ? 9 : 1.6;
+      n.charge = kind === 'center' ? 4 : kind === 'system' ? 2.2 : 0.8;
+      // the box the node and its label take, for collisions
+      const mctx = st.cv.getContext('2d');
+      mctx.font = FONTS[kind](1);
+      n.bw = Math.max(n.r * 2, mctx.measureText(label).width) + 14;
+      n.bh = n.r * 2 + 5 + (kind === 'center' ? 24 : 15) + 6;
+      nodes.push(n); byId.set(id, n);
+      return n;
+    };
+    const c = add('c', 'center', st.map.center);
+    c.x = 0; c.y = 0;
+    const systems = st.map.systems;
+    systems.forEach((sys, i) => {
+      const a = i / Math.max(1, systems.length) * Math.PI * 2 - Math.PI / 2;
+      const sn = add('s:' + sys.id, 'system', sys.name, { x: Math.cos(a) * 24, y: Math.sin(a) * 24 });
+      sn.sys = [sys.id];
+      edges.push({ a: c, b: sn, len: 150, k: 0.7 });
+    });
+    systems.forEach(sys => {
+      const sn = byId.get('s:' + sys.id);
+      sys.items.forEach(it => {
+        const key = norm(it.name); if (!key) return;
+        const n = add('i:' + key, 'item', it.name, sn);
+        if (!n.sys.includes(sys.id)) { n.sys.push(sys.id); edges.push({ a: sn, b: n, len: 64, k: 0.6 }); }
+      });
+    });
+    st.map.links.forEach(([x, y]) => {
+      const a = byId.get('s:' + x), b = byId.get('s:' + y);
+      if (a && b) edges.push({ a, b, len: 170, k: 0.08, cross: true });
+    });
+    nodes.forEach(n => { n.nb = new Set([n]); });
+    edges.forEach(e => { e.a.nb.add(e.b); e.b.nb.add(e.a); });
+    st.nodes = nodes; st.edges = edges; st.byId = byId;
+    st.alpha = Math.max(st.alpha || 0, old.size ? 0.4 : 1);
+  }
+
+  // a small force layout, in the manner of d3-force
+  function tick() {
+    const N = st.nodes, a = st.alpha;
+    for (let i = 0; i < N.length; i++) {
+      const p = N[i];
+      for (let j = i + 1; j < N.length; j++) {
+        const q = N[j];
+        let dx = q.x - p.x, dy = q.y - p.y, d2 = dx * dx + dy * dy;
+        if (d2 < 0.01) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 0.5; }
+        const f = 300 * a * p.charge * q.charge / d2 / 3;
+        p.vx -= dx * f / p.charge; p.vy -= dy * f / p.charge;
+        q.vx += dx * f / q.charge; q.vy += dy * f / q.charge;
+        // keep labels from sitting on one another: their boxes may not overlap
+        const ox = (p.bw + q.bw) / 2 - Math.abs(dx), oy = (p.bh + q.bh) / 2 - Math.abs(dy);
+        if (ox > 0 && oy > 0) {
+          const k = 0.3 * Math.max(a, 0.05);
+          if (ox / p.bw < oy / p.bh) { const m = Math.sign(dx || 1) * ox * k; p.vx -= m; q.vx += m; }
+          else { const m = Math.sign(dy || 1) * oy * k; p.vy -= m; q.vy += m; }
+        }
+      }
+    }
+    for (const e of st.edges) {
+      const dx = e.b.x + e.b.vx - e.a.x - e.a.vx, dy = e.b.y + e.b.vy - e.a.y - e.a.vy;
+      const l = Math.sqrt(dx * dx + dy * dy) || 1, f = (l - e.len) / l * a * e.k;
+      const wb = e.a.charge / (e.a.charge + e.b.charge);
+      e.b.vx -= dx * f * wb; e.b.vy -= dy * f * wb;
+      e.a.vx += dx * f * (1 - wb); e.a.vy += dy * f * (1 - wb);
+    }
+    for (const n of N) {
+      if (n.kind === 'center') { n.x = 0; n.y = 0; n.vx = n.vy = 0; continue; }
+      if (n.fx != null) { n.x = n.fx; n.y = n.fy; n.vx = n.vy = 0; continue; }
+      n.vx *= 0.6; n.vy *= 0.6;
+      n.x += n.vx; n.y += n.vy;
+    }
+    st.alpha += (st.alphaTarget - st.alpha) * 0.0228;
+  }
+
+  // ── view: fit the whole graph in the frame, eased ──
   function layout() {
     const W = Math.round(st.wrap.clientWidth || 600);
-    const H = Math.round(Math.max(420, Math.min(640, W * 1.02)));
+    const H = Math.round(Math.max(420, Math.min(620, W * 0.82)));
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     st.W = W; st.H = H;
     st.wrap.style.height = H + 'px';
-    [st.back, st.front].forEach(cv => {
-      cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
-      cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
-    });
-    const sh = Math.round(H * 0.58), sw = Math.round(sh / SATURN_ASPECT);
-    st.saturnBox = { x: Math.round((W - sw) / 2), y: Math.round((H - sh) / 2), w: sw, h: sh };
-    // the orbit: an ellipse in the ring plane, as long as the frame allows
-    const reach = Math.min((W / 2 - 70) / Math.cos(RING_TILT), (H / 2 - 40) / Math.sin(RING_TILT));
-    st.orbit = { cx: W / 2, cy: H / 2, a: Math.max(140, reach), b: Math.max(90, reach * 0.52) };
-    // even spacing along the path, not by angle, so satellites do not bunch at the ends
-    const N = 720, cum = [0];
-    let prev = orbitPoint(0);
-    for (let k = 1; k <= N; k++) { const q = orbitPoint(k / N * Math.PI * 2); cum.push(cum[k - 1] + Math.hypot(q.x - prev.x, q.y - prev.y)); prev = q; }
-    st.arc = { N, cum, total: cum[N] };
-    if (st.scene) st.scene.resize(W, H);
+    st.cv.width = W * dpr; st.cv.height = H * dpr; st.cv.style.width = W + 'px'; st.cv.style.height = H + 'px';
+    st.cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-
-  // position at fraction u (0..1) of the way round, measured along the path
-  function orbitAt(u) {
-    const A = st.arc; u = ((u % 1) + 1) % 1;
-    const target = u * A.total;
-    let lo = 0, hi = A.N;
-    while (lo < hi) { const mid = (lo + hi) >> 1; if (A.cum[mid] < target) lo = mid + 1; else hi = mid; }
-    return orbitPoint(lo / A.N * Math.PI * 2);
+  function fit(instant) {
+    if (!st.nodes || !st.nodes.length) return;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const n of st.nodes) {
+      x0 = Math.min(x0, n.x - n.bw / 2); x1 = Math.max(x1, n.x + n.bw / 2);
+      y0 = Math.min(y0, n.y - n.r - 6); y1 = Math.max(y1, n.y - n.r + n.bh);
+    }
+    const s = Math.min(1.25, (st.W - 24) / (x1 - x0), (st.H - 24) / (y1 - y0));
+    const tx = st.W / 2 - (x0 + x1) / 2 * s, ty = st.H / 2 - (y0 + y1) / 2 * s;
+    const v = st.view, k = instant ? 1 : 0.06;
+    v.s += (s - v.s) * k; v.x += (tx - v.x) * k; v.y += (ty - v.y) * k;
   }
-
-  function orbitPoint(theta) {
-    const o = st.orbit;
-    const lx = Math.cos(theta) * o.a, ly = Math.sin(theta) * o.b;
-    const c = Math.cos(RING_TILT), s = Math.sin(RING_TILT);
-    return { x: o.cx + lx * c - ly * s, y: o.cy + lx * s + ly * c, front: Math.sin(theta) > 0, depth: (Math.sin(theta) + 1) / 2 };
-  }
+  const toScreen = n => ({ x: st.view.x + n.x * st.view.s, y: st.view.y + n.y * st.view.s });
 
   // ── drawing ──
   function frame(now) {
-    if (!st.map) return;
+    if (!st.map || !st.nodes) return;
     const t = now / 1000;
-    if (!reduce && !st.selected) st.drift += (now - (st.lastNow || now)) / 1000 * (Math.PI * 2 / 300);   // one lap in five minutes
-    st.lastNow = now;
-    const bctx = st.back.getContext('2d'), fctx = st.front.getContext('2d');
-    bctx.clearRect(0, 0, st.W, st.H); fctx.clearRect(0, 0, st.W, st.H);
+    if (st.alpha > 0.002 || st.dragging) tick();
+    if (!st.dragging) fit(false);
+    const ctx = st.cv.getContext('2d'), ink = st.ink.join(',');
+    ctx.clearRect(0, 0, st.W, st.H);
 
-    // the orbit itself, faint dots, back half behind Saturn
-    for (let k = 0; k < 180; k++) {
-      const p = orbitPoint(k / 180 * Math.PI * 2);
-      const ctx = p.front ? fctx : bctx;
-      ctx.fillStyle = 'rgba(' + st.ink.join(',') + ',' + (0.06 + 0.1 * p.depth).toFixed(3) + ')';
-      ctx.fillRect(p.x, p.y, 1, 1);
+    // what is in focus: the hovered node, else the selected system, with their neighbours
+    const focus = st.hover || (st.selected && st.byId.get('s:' + st.selected)) || null;
+    const lit = n => !focus || focus.nb.has(n);
+    // nodes breathe a little once settled
+    const sway = reduce ? 0 : 1.6;
+    const P = new Map();
+    for (const n of st.nodes) {
+      const p = toScreen(n);
+      if (n.kind !== 'center' && n.fx == null) { p.x += Math.sin(t * 0.35 + n.ph) * sway; p.y += Math.cos(t * 0.29 + n.ph * 1.3) * sway; }
+      P.set(n, p);
     }
 
-    const systems = st.map.systems || [];
-    const n = Math.max(1, systems.length);
-    const pos = {};
+    ctx.lineWidth = 1;
+    for (const e of st.edges) {
+      const on = focus && lit(e.a) && lit(e.b) && (e.a === focus || e.b === focus);
+      const a = focus ? (on ? 0.42 : 0.05) : (e.cross ? 0.16 : 0.13);
+      const pa = P.get(e.a), pb = P.get(e.b);
+      ctx.strokeStyle = 'rgba(' + ink + ',' + a + ')';
+      if (e.cross) ctx.setLineDash([2, 5]);
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+      if (e.cross) ctx.setLineDash([]);
+    }
+
     st.hits = [];
-    systems.forEach((sys, i) => {
-      pos[sys.id] = orbitAt(st.drift / (Math.PI * 2) + i / n + 0.08);
-    });
-
-    // links between systems
-    (st.map.links || []).forEach(([a, b]) => {
-      const pa = pos[a], pb = pos[b];
-      if (!pa || !pb) return;
-      const lit = st.selected && (st.selected === a || st.selected === b);
-      const ctx = pa.front && pb.front ? fctx : bctx;
-      ctx.strokeStyle = 'rgba(' + st.ink.join(',') + ',' + (lit ? 0.35 : 0.1) + ')';
-      ctx.setLineDash([2, 5]); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(pa.x, pa.y);
-      ctx.quadraticCurveTo(st.orbit.cx + (pa.x + pb.x - 2 * st.orbit.cx) * 0.15, st.orbit.cy + (pa.y + pb.y - 2 * st.orbit.cy) * 0.15, pb.x, pb.y);
-      ctx.stroke(); ctx.setLineDash([]);
-    });
-
-    const font = '400 13px Inter, "PingFang TC", "Noto Sans TC", sans-serif';
-    systems.forEach(sys => {
-      const p = pos[sys.id];
-      const sel = st.selected === sys.id, dim = st.selected && !sel;
-      const ctx = p.front || sel ? fctx : bctx;
-      const alpha = (0.45 + 0.55 * p.depth) * (dim ? 0.35 : 1);
-      const R = (sel ? 10 : 7) * (0.8 + 0.3 * p.depth);
-      drawSphere(ctx, SAT_PTS, p.x, p.y, R, t, alpha);
-      // outward = away from Saturn; the label sits outward, or inward once the moons take that side
-      const out = Math.atan2(p.y - st.orbit.cy, p.x - st.orbit.cx);
-      const labAng = sel ? (st.fanDir != null ? st.fanDir : out) + Math.PI : out;
-      const lx = p.x + Math.cos(labAng) * (R + 8), ly = p.y + Math.sin(labAng) * (R + 8);
-      ctx.font = font; ctx.textBaseline = 'middle';
-      ctx.textAlign = Math.abs(Math.cos(labAng)) < 0.35 ? 'center' : (Math.cos(labAng) < 0 ? 'right' : 'left');
-      ctx.fillStyle = 'rgba(' + st.ink.join(',') + ',' + Math.min(1, alpha + 0.15).toFixed(3) + ')';
-      // keep the whole label inside the frame
-      const tw = ctx.measureText(sys.name).width;
-      const x0 = ctx.textAlign === 'right' ? lx - tw : ctx.textAlign === 'center' ? lx - tw / 2 : lx;
-      const shift = Math.max(0, 4 - x0) - Math.max(0, x0 + tw - (st.W - 4));
-      ctx.fillText(sys.name, lx + shift, ly + (Math.abs(Math.cos(labAng)) < 0.35 ? Math.sign(Math.sin(labAng)) * 6 : 0));
-      st.hits.push({ id: sys.id, x: p.x, y: p.y, r: 26 });
-
-      if (sel) {
-        const items = sys.items || [];
-        const m = items.length, step = Math.min(0.62, 2.6 / Math.max(1, m)), rr = 60;
-        fctx.font = '400 12px Inter, "PingFang TC", "Noto Sans TC", sans-serif';
-        const widths = items.map(it => fctx.measureText(it.name).width);
-        // fan the moons where they and their labels fit: try outward first, then turn
-        const sb = st.saturnBox;
-        const cost = centre => {
-          let c = 0;
-          items.forEach((it, j) => {
-            const ang = centre + (j - (m - 1) / 2) * step;
-            const mx = p.x + Math.cos(ang) * rr, my = p.y + Math.sin(ang) * rr;
-            const left = Math.cos(ang) < -0.2, w = widths[j] + 12;
-            const x0 = left ? mx - w : mx, x1 = left ? mx : mx + w;
-            c += Math.max(0, -x0) + Math.max(0, x1 - st.W) + Math.max(0, 12 - my) * 3 + Math.max(0, my - (st.H - 12)) * 3;
-            if (mx > sb.x + sb.w * 0.2 && mx < sb.x + sb.w * 0.8 && my > sb.y + sb.h * 0.15 && my < sb.y + sb.h * 0.85) c += 40;
-          });
-          return c;
-        };
-        let centre = out, best = cost(out);
-        for (const d of [0.5, -0.5, 1, -1, 1.6, -1.6, 2.4, -2.4, Math.PI]) {
-          const c = cost(out + d);
-          if (c < best - 0.5) { best = c; centre = out + d; }
-        }
-        st.fanDir = centre;                // next frame's label sits opposite the fan
-        items.forEach((it, j) => {
-          const ang = centre + (j - (m - 1) / 2) * step;
-          const mx = p.x + Math.cos(ang) * rr, my = p.y + Math.sin(ang) * rr;
-          fctx.strokeStyle = 'rgba(' + st.ink.join(',') + ',0.14)'; fctx.lineWidth = 1;
-          fctx.beginPath(); fctx.moveTo(p.x, p.y); fctx.lineTo(mx, my); fctx.stroke();
-          drawSphere(fctx, MOON_PTS, mx, my, 3.5, t + j, 0.9);
-          const l2 = Math.cos(ang) < -0.2;
-          fctx.font = '400 12px Inter, "PingFang TC", "Noto Sans TC", sans-serif';
-          fctx.textAlign = l2 ? 'right' : 'left'; fctx.textBaseline = 'middle';
-          fctx.fillStyle = 'rgba(' + st.ink.join(',') + ',0.82)';
-          const w2 = widths[j], tx0 = l2 ? mx - 8 - w2 : mx + 8;
-          const sh2 = Math.max(0, 4 - tx0) - Math.max(0, tx0 + w2 - (st.W - 4));
-          fctx.fillText(it.name, mx + (l2 ? -8 : 8) + sh2, my);
-        });
+    const vs = Math.max(0.7, Math.min(1.2, st.view.s));
+    for (const n of st.nodes) {
+      const p = P.get(n), on = lit(n), sel = focus === n;
+      const dim = on ? 1 : 0.22;
+      const R = n.r * vs * (sel ? 1.25 : 1);
+      if (n.kind === 'center') drawSphere(ctx, CENTER_PTS, p.x, p.y, R, t * 0.5, dim);
+      else if (n.kind === 'system') drawSphere(ctx, SAT_PTS, p.x, p.y, R, t, (0.85) * dim);
+      else {
+        // items are single points, a shared one slightly larger
+        const sz = (n.sys.length > 1 ? 3.4 : 2.6) * vs;
+        ctx.fillStyle = 'rgba(' + ink + ',' + (0.9 * dim).toFixed(3) + ')';
+        ctx.fillRect(p.x - sz / 2, p.y - sz / 2, sz, sz);
       }
-    });
+      st.hits.push({ n, x: p.x, y: p.y, r: Math.max(14, R + 8) });
+
+      // label under the node
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.font = FONTS[n.kind](vs);
+      const la = n.kind === 'center' ? 0.95 : n.kind === 'system' ? 0.9 : focus && on ? 0.85 : 0.55;
+      ctx.fillStyle = 'rgba(' + ink + ',' + (la * dim).toFixed(3) + ')';
+      const tw = ctx.measureText(n.label).width;
+      const lx = Math.max(4 + tw / 2, Math.min(st.W - 4 - tw / 2, p.x));
+      ctx.fillText(n.label, lx, p.y + R + 5);
+    }
   }
 
   function loop(now) {
@@ -203,14 +238,18 @@
     if (!document.hidden && now - st.last > 32) { st.last = now; frame(now); }
     st.raf = requestAnimationFrame(loop);
   }
+  function settle() {
+    for (let i = 0; i < 400 && st.alpha > 0.002; i++) tick();
+    fit(true);
+  }
   function start() {
-    if (st.scene) st.scene.start();
-    if (reduce) { frame(performance.now()); return; }
+    if (reduce) { if (st.nodes) settle(); frame(performance.now()); return; }
     if (st.running) return;
-    st.running = true; st.lastNow = 0;
+    st.running = true;
     st.raf = requestAnimationFrame(loop);
   }
-  function stop() { st.running = false; cancelAnimationFrame(st.raf); if (st.scene) st.scene.stop(); }
+  function stop() { st.running = false; cancelAnimationFrame(st.raf); }
+  function redraw() { if (!st.running) { if (reduce && st.nodes) settle(); frame(performance.now()); } }
 
   // ── data ──
   async function rpc(name, args) {
@@ -235,7 +274,7 @@
       st.error = e.message;
     }
     renderPanel();
-    centerName();
+    if (st.map) rebuild();
     if (st.map && onPage()) start();
   }
 
@@ -249,6 +288,7 @@
   }
 
   function save() {
+    changed();
     clearTimeout(st.saveTimer);
     status('儲存中…');
     st.saveTimer = setTimeout(async () => {
@@ -319,27 +359,59 @@
     st.statusEl = P.querySelector('#sysStatus');
   }
 
-  function centerName() {
-    const el = document.getElementById('sysCenterName');
-    if (el) el.textContent = (st.map && st.map.center) || 'Charles';
-  }
+  // the map changed in the panel: rebuild the graph, keeping positions
+  function changed() { if (st.map) { rebuild(); redraw(); } }
 
   function select(id) {
     st.selected = id;
     renderPanel();
-    if (reduce || !st.running) frame(performance.now());
+    redraw();
   }
 
-  // ── events ──
-  function onCanvasClick(e) {
-    if (!st.map) return;
-    const r = st.front.getBoundingClientRect();
+  // ── events: hover lights a node and its neighbours, drag moves it, tap opens it ──
+  function hitAt(e) {
+    const r = st.cv.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
     let best = null, bd = 1e9;
-    st.hits.forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d < h.r && d < bd) { bd = d; best = h.id; } });
-    if (best) select(best === st.selected ? null : best);
-    else if (st.selected) select(null);
-    else if (st.scene) st.scene.hold();            // tapping empty space: the dust stirs
+    st.hits.forEach(h => { const d = Math.hypot(h.x - x, h.y - y); if (d < h.r && d < bd) { bd = d; best = h.n; } });
+    return { n: best, x, y };
+  }
+  function onDown(e) {
+    if (!st.map) return;
+    const h = hitAt(e);
+    st.press = { n: h.n, x: h.x, y: h.y, moved: false };
+    if (h.n && h.n.kind !== 'center') st.cv.setPointerCapture(e.pointerId);
+  }
+  function onMove(e) {
+    if (!st.map) return;
+    const h = hitAt(e), pr = st.press;
+    if (pr && pr.n && pr.n.kind !== 'center') {
+      if (!pr.moved && Math.hypot(h.x - pr.x, h.y - pr.y) < 4) return;
+      pr.moved = true; st.dragging = pr.n;
+      pr.n.fx = (h.x - st.view.x) / st.view.s; pr.n.fy = (h.y - st.view.y) / st.view.s;
+      st.alpha = Math.max(st.alpha, 0.3); st.alphaTarget = 0.3;
+      st.hover = pr.n;
+      if (!st.running) redraw();
+      return;
+    }
+    if (e.pointerType === 'mouse' && st.hover !== h.n) {
+      st.hover = h.n;
+      st.cv.style.cursor = h.n && h.n.kind !== 'center' ? 'pointer' : 'default';
+      if (!st.running) redraw();
+    }
+  }
+  function onUp(e) {
+    const pr = st.press; st.press = null;
+    if (st.dragging) {
+      st.dragging.fx = st.dragging.fy = null; st.dragging = null; st.alphaTarget = 0;
+      if (e.pointerType !== 'mouse') st.hover = null;
+      return;
+    }
+    if (!pr) return;
+    const n = pr.n;
+    if (!n || n.kind === 'center') { if (st.selected) select(null); return; }
+    const id = n.kind === 'system' ? n.sys[0] : (n.sys.includes(st.selected) ? st.selected : n.sys[0]);
+    select(id === st.selected && n.kind === 'system' ? null : id);
   }
 
   document.addEventListener('click', e => {
@@ -386,7 +458,7 @@
   document.addEventListener('change', e => {
     const t = e.target;
     if (!st.panel || !st.panel.contains(t) || !st.map) return;
-    if (t.id === 'sysCenter') { st.map.center = t.value.trim() || 'Charles'; save(); centerName(); }
+    if (t.id === 'sysCenter') { st.map.center = t.value.trim() || 'Charles'; save(); }
     if (t.id === 'sysName') { const s = st.map.systems.find(x => x.id === st.selected); if (s) { s.name = t.value.trim() || s.name; save(); } }
     if (t.dataset.sysItem) {
       const s = st.map.systems.find(x => x.id === st.selected); const it = s && s.items.find(x => x.id === t.dataset.sysItem);
@@ -417,21 +489,22 @@
     page.innerHTML = `
       <div class="page-header"><div>
         <h1 class="page-title">System</h1>
-        <p class="page-subtitle">你和繞著你轉的系統</p>
+        <p class="page-subtitle">你、你的系統，和它們之間的連結</p>
       </div></div>
       <div class="sys-stage" id="sysStage">
-        <canvas class="sys-back" aria-hidden="true"></canvas>
-        <canvas class="sys-saturn" role="img" aria-label="中間是土星，代表你；周圍的衛星是你的各個系統"></canvas>
-        <canvas class="sys-front" aria-hidden="true"></canvas>
+        <canvas role="img" aria-label="關係圖：中間是你，連到你的各個系統，再連到每個系統的項目"></canvas>
       </div>
-      <p class="sys-center" id="sysCenterName">Charles</p>
       <div class="sys-panel" id="sysPanel"></div>`;
     const inbox = document.getElementById('page-inbox');
     container.insertBefore(page, inbox ? inbox.nextSibling : null);
     st.page = page; st.wrap = page.querySelector('#sysStage');
-    st.back = page.querySelector('.sys-back'); st.front = page.querySelector('.sys-front'); st.saturnCv = page.querySelector('.sys-saturn');
+    st.cv = page.querySelector('canvas');
     st.panel = page.querySelector('#sysPanel');
-    st.front.addEventListener('click', onCanvasClick);
+    st.cv.addEventListener('pointerdown', onDown);
+    st.cv.addEventListener('pointermove', onMove);
+    st.cv.addEventListener('pointerup', onUp);
+    st.cv.addEventListener('pointercancel', onUp);
+    st.cv.addEventListener('pointerleave', () => { if (!st.dragging && st.hover) { st.hover = null; redraw(); } });
 
     const privRow = document.querySelector('#privateUnlocked .x-row');
     if (privRow && !privRow.querySelector('[data-x-goto="system"]')) {
@@ -445,13 +518,7 @@
     if (!st.page) return;
     st.ink = window.UnwindPoints ? UnwindPoints.readInk() : st.ink;
     layout();
-    if (!st.scene && window.UnwindPoints) {
-      UnwindPoints.load(SATURN).then(data => {
-        st.scene = UnwindPoints.scene(st.saturnCv, data, { box: () => st.saturnBox, size: [0.6, 1.8], gatherMs: 2600 });
-        st.scene.resize(st.W, st.H);
-        if (onPage()) st.scene.start();
-      }).catch(() => {});
-    }
+    if (!st.view.x) { st.view.x = st.W / 2; st.view.y = st.H / 2; }
     if (unlocked() && st.loadState === 'idle') load();
     else renderPanel();
     start();
@@ -464,11 +531,11 @@
     const baseRenderPrivate = window.renderPrivate;
     window.renderPrivate = function () {
       baseRenderPrivate();
-      if (!unlocked()) { st.map = null; st.loadState = 'idle'; st.selected = null; }
+      if (!unlocked()) { st.map = null; st.nodes = null; st.loadState = 'idle'; st.selected = null; st.hover = null; }
       if (onPage()) show();
     };
-    window.addEventListener('resize', () => { if (onPage()) { layout(); if (!st.running) frame(performance.now()); } });
-    new MutationObserver(() => { st.ink = window.UnwindPoints ? UnwindPoints.readInk() : st.ink; if (st.scene) st.scene.reink(); })
+    window.addEventListener('resize', () => { if (onPage()) { layout(); fit(true); redraw(); } });
+    new MutationObserver(() => { st.ink = window.UnwindPoints ? UnwindPoints.readInk() : st.ink; if (onPage()) redraw(); })
       .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     if (onPage()) show();
   }

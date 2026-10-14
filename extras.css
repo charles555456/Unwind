@@ -214,8 +214,7 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 
 /* System page (system.js) */
 .sys-stage { position: relative; width: 100%; margin: 4px 0 28px; }
-.sys-stage canvas { position: absolute; inset: 0; display: block; }
-.sys-back { z-index: 0; } .sys-saturn { z-index: 1; } .sys-front { z-index: 2; cursor: pointer; }
+.sys-stage canvas { position: absolute; inset: 0; display: block; touch-action: pan-y pinch-zoom; }
 .sys-panel { max-width: 34em; }
 .sys-note { color: var(--text-secondary); font-size: 14px; line-height: 1.8; margin: 0 0 12px; }
 .sys-note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--text-primary); }
@@ -240,7 +239,3 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 .sys-danger { margin-top: 24px; }
 .sys-status { min-height: 18px; font-size: 12px; color: var(--text-tertiary); margin: 10px 0 0; }
 .sys-status.err { color: #e5786d; }
-.sys-center {
-  margin: -14px 0 28px; text-align: center; color: var(--text-primary);
-  font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 26px; letter-spacing: -0.005em;
-}
