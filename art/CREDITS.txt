@@ -5,12 +5,15 @@ astronaut.bin
   NASA photo S84-27017. Public domain (NASA).
   https://images.nasa.gov/details/s84-27017
 
-hands.bin
-  Michelangelo, The Creation of Adam (detail), c. 1512, Sistine Chapel.
-  Public domain. Source file: Wikimedia Commons,
-  "Michelangelo - Creation of Adam (cropped).jpg".
+rocket.bin
+  NASA's PACE mission lifting off on a SpaceX Falcon 9 from Space Launch
+  Complex 40, Cape Canaveral, 8 Feb 2024, 1:33 a.m. EST.
+  NASA photo KSC-20240208-PH-KMO01_0004 (NASA/Kevin Davis and Kevin O'Connell).
+  Public domain (NASA).
+  https://images.nasa.gov/details/KSC-20240208-PH-KMO01_0004
 
-The conversion keeps only the subject (black space for the astronaut, a
-colour key plus region filter for the hands) and samples brighter areas
-more densely. Format: b'UPTS', u16 width, u16 height, u32 count, then
+The conversion keeps only the subject (black space for the astronaut; a
+levels stretch with a soft falloff for the rocket's hazy night sky) and samples
+brighter areas more densely. Earlier versions also used Michelangelo's
+Creation of Adam (public domain); see git history. Format: b'UPTS', u16 width, u16 height, u32 count, then
 u16 x, u16 y, u8 brightness per point, little-endian.

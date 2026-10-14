@@ -1,9 +1,9 @@
 /*
  * Page art for Projects and Stream. Inserts itself; index.html is unchanged.
  *
- * Projects — the two hands from Michelangelo's Creation of Adam (public
- *            domain), turned into points like the home sphere, with a tiny
- *            version of that sphere turning in the gap between the fingers.
+ * Projects — NASA's PACE mission lifting off at night on a Falcon 9, rising
+ *            out of its own cloud (NASA photo KSC-20240208-PH-KMO01_0004,
+ *            public domain), turned into points like the home sphere.
  *            "Create with happiness" sits beneath.
  * Stream   — on wide screens, a few faint words from the Stream posts drift
  *            slowly upward in the side margins, outside the reading column.
@@ -21,45 +21,18 @@
   // ════════════════════════════════════════════════════════
   //  PROJECTS
   // ════════════════════════════════════════════════════════
-  const HANDS = 'art/hands.bin';
-  const ASPECT = 262 / 900;                 // of the point file
-  const GAP = { x: 0.462, y: 0.48 };        // between the two fingertips, in image units
+  const ROCKET = 'art/rocket.bin';
+  const ASPECT = 726 / 560;                 // height / width of the point file
   const proj = { root: null, canvas: null, scene: null, loading: null, layout: null };
 
-  // a few dozen points on a small sphere, denser at the poles, like the home page
-  const SPARK = (() => {
-    const pts = [];
-    while (pts.length < 90) {
-      const lat = rnd(-1, 1) * Math.PI / 2, lon = rnd(0, Math.PI * 2);
-      if (Math.random() > 0.2 + 0.8 * Math.pow(Math.abs(Math.sin(lat)), 1.4)) continue;
-      pts.push([Math.cos(lon) * Math.cos(lat), Math.sin(lat), Math.sin(lon) * Math.cos(lat), Math.random()]);
-    }
-    return pts;
-  })();
-
-  function drawSpark(ctx, t, box, ink, gathered) {
-    const fadeIn = Math.max(0, Math.min(1, (gathered - 0.85) / 0.15));
-    if (fadeIn <= 0) return;
-    const cx = box.x + GAP.x * box.w, cy = box.y + GAP.y * box.h;
-    const R = Math.max(6, box.w * 0.012);
-    const rot = reduce ? 0.6 : t * 0.5, c = Math.cos(rot), s = Math.sin(rot);
-    const tilt = 0.25, ct = Math.cos(tilt), st = Math.sin(tilt);
-    for (const p of SPARK) {
-      const x = p[0] * c + p[2] * s, z0 = -p[0] * s + p[2] * c;
-      const y = p[1] * ct - z0 * st, z = p[1] * st + z0 * ct;
-      const depth = (z + 1) / 2;
-      const a = (0.2 + 0.8 * depth) * fadeIn * (reduce ? 1 : 0.85 + 0.15 * Math.sin(t * 2 + p[3] * 6));
-      ctx.fillStyle = 'rgba(' + ink[0] + ',' + ink[1] + ',' + ink[2] + ',' + a.toFixed(3) + ')';
-      const sz = 0.7 + 0.7 * depth;
-      ctx.fillRect(cx + x * R, cy + y * R, sz, sz);
-    }
-  }
-
+  // A tall image, centred: as high as fits comfortably, never wider than the column.
   function projSize() {
     const w = Math.round(proj.root.clientWidth || 600);
-    const imgH = Math.round(w * ASPECT);
-    const h = Math.round(imgH + Math.max(40, w * 0.08));
-    return { w, h, box: { x: 0, y: Math.round((h - imgH) / 2), w, h: imgH } };
+    let imgH = Math.round(Math.min(520, Math.max(320, w * 0.62)));
+    let imgW = Math.round(imgH / ASPECT);
+    if (imgW > w) { imgW = w; imgH = Math.round(w * ASPECT); }
+    const pad = 16;
+    return { w, h: imgH + pad * 2, box: { x: Math.round((w - imgW) / 2), y: pad, w: imgW, h: imgH } };
   }
 
   function projBuild() {
@@ -68,7 +41,7 @@
     const sec = document.createElement('section');
     sec.id = 'projArt';
     sec.className = 'proj-art';
-    sec.innerHTML = '<canvas role="img" aria-label="兩隻手的指尖之間，一顆小小的光點"></canvas>'
+    sec.innerHTML = '<canvas role="img" aria-label="夜裡升空的火箭，從自己的雲裡往上衝"></canvas>'
       + '<h2 class="proj-art-title"><span>Create with</span> <em>happiness</em></h2>';
     const sig = page.querySelector('.page-sig');
     page.insertBefore(sec, sig ? sig.nextSibling : page.firstChild);
@@ -81,14 +54,13 @@
     if (!proj.root || !window.UnwindPoints) return;
     if (proj.scene) { proj.scene.start(); return; }
     if (proj.loading) return;
-    proj.loading = UnwindPoints.load(HANDS).then(data => {
+    proj.loading = UnwindPoints.load(ROCKET).then(data => {
       proj.layout = projSize();
       proj.scene = UnwindPoints.scene(proj.canvas, data, {
         box: () => proj.layout.box,
-        size: [0.6, 1.6],
+        size: [0.6, 1.7],
         gatherMs: 2600,
-        feather: 0.14,
-        after: drawSpark
+        feather: 0.12                       // the cloud runs off both sides of the crop
       });
       proj.scene.resize(proj.layout.w, proj.layout.h);
       if (isOn('projects')) proj.scene.start();
