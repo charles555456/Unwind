@@ -84,7 +84,7 @@ body.is-private .private-only { display: inline-block !important; }
 .reader-content a { color: inherit; text-decoration: underline; text-decoration-color: var(--text-tertiary); text-underline-offset: 3px; }
 .reader-content img, .reader-content video { max-width: 100%; height: auto; border-radius: 6px; }
 .reader-content ul, .reader-content ol { padding-left: 1.4em; }
-.reader-content blockquote { border-left: 2px solid var(--border); padding-left: 16px; color: var(--text-secondary); }
+.reader-content blockquote { border-left: 1px solid var(--border); padding-left: 16px; color: var(--text-secondary); }
 .reader-content pre, .reader-content code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
 .reader-content pre { background: var(--hover-bg); padding: 14px; border-radius: 6px; overflow-x: auto; }
 .reader-content table { display: block; overflow-x: auto; border-collapse: collapse; }
@@ -178,43 +178,32 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 @media (prefers-reduced-motion: reduce) { .fx-beam { display: none; } }
 
 /* Private page astronaut (astronaut.js) */
-.astro { display: flex; align-items: center; gap: 12px; margin: 0 0 28px; }
+.astro { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0 0 40px; }
 .astro-figure {
   flex: none; padding: 0; border: none; background: none; cursor: pointer; line-height: 0;
-  -webkit-tap-highlight-color: transparent; border-radius: 12px;
+  -webkit-tap-highlight-color: transparent; border-radius: 4px;
 }
-.astro-figure:focus-visible { outline: 1px solid var(--text-tertiary); outline-offset: 2px; }
-.astro-bubble {
-  position: relative; flex: 0 1 340px; min-height: 52px;
-  padding: 12px 16px; border: 1px solid var(--border); border-radius: 14px;
-  background: var(--bg); color: var(--text-primary);
-  font-size: 14.5px; line-height: 1.75;
+.astro-figure:focus-visible { outline: 1px solid var(--text-tertiary); outline-offset: 4px; }
+.astro-line {
+  margin: 0; max-width: 34em; font-size: 15px; line-height: 1.75; color: var(--text-secondary);
+  text-wrap: pretty; transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.astro-bubble::before, .astro-bubble::after {
-  content: ""; position: absolute; top: 22px; width: 0; height: 0;
-  border-style: solid; border-color: transparent;
-}
-.astro-bubble::before { left: -9px; border-width: 7px 9px 7px 0; border-right-color: var(--border); }
-.astro-bubble::after  { left: -7px; border-width: 6px 8px 6px 0; border-right-color: var(--bg); top: 23px; }
-.astro-text::after { content: ""; display: inline-block; width: 6px; }
-.astro-pop { animation: astroPop 0.28s ease-out; }
-@keyframes astroPop { from { opacity: 0.4; transform: translateY(3px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .astro-pop { animation: none; } }
-@media (max-width: 480px) {
-  .astro { gap: 6px; margin-bottom: 20px; }
-  .astro canvas { width: 150px !important; height: auto !important; }
-  .astro-bubble { font-size: 14px; padding: 10px 13px; }
-}
+.astro-line.is-out { opacity: 0; }
+@media (max-width: 560px) { .astro { margin-bottom: 28px; } }
+@media (prefers-reduced-motion: reduce) { .astro-line { transition: none; } }
 
 /* Projects art (page-art.js) */
-.proj-art { margin: 4px 0 44px; }
+.proj-art { margin: 8px 0 56px; }
 .proj-art canvas { display: block; width: 100%; }
 .proj-art-title {
-  margin-top: 4px; text-align: center; font-weight: 400; color: var(--text-primary);
-  font-size: clamp(24px, 4.2vw, 34px); line-height: 1.12; letter-spacing: -0.01em;
+  margin: 20px 0 0; text-align: center; font-weight: 400; color: var(--text-primary);
+  font-size: clamp(26px, 4.6vw, 40px); line-height: 1.1; letter-spacing: -0.02em; text-wrap: balance;
 }
-.proj-art-title span { display: block; font-weight: 500; }
-.proj-art-title em { display: block; font-family: 'Instrument Serif', Georgia, serif; font-style: normal; font-size: 1.28em; letter-spacing: 0; }
+.proj-art-title span { font-weight: 400; }
+.proj-art-title em {
+  font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400;
+  font-size: 1.14em; letter-spacing: -0.005em;
+}
 
 /* Stream backdrop (page-art.js) */
 .stream-art {

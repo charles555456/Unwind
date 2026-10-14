@@ -1,0 +1,16 @@
+Point files in this folder are made from public-domain images.
+
+astronaut.bin
+  Bruce McCandless II on the first untethered spacewalk, STS-41B, 7 Feb 1984.
+  NASA photo S84-27017. Public domain (NASA).
+  https://images.nasa.gov/details/s84-27017
+
+hands.bin
+  Michelangelo, The Creation of Adam (detail), c. 1512, Sistine Chapel.
+  Public domain. Source file: Wikimedia Commons,
+  "Michelangelo - Creation of Adam (cropped).jpg".
+
+The conversion keeps only the subject (black space for the astronaut, a
+colour key plus region filter for the hands) and samples brighter areas
+more densely. Format: b'UPTS', u16 width, u16 height, u32 count, then
+u16 x, u16 y, u8 brightness per point, little-endian.

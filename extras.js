@@ -30,12 +30,13 @@
     else window.addEventListener('load', () => setTimeout(go, 0));
   })();
 
-  // The Private page's astronaut, and the Projects / Stream page art.
-  // Plain scripts with no dependencies; each inserts itself.
-  ['astronaut.js', 'page-art.js'].forEach(src => {
+  // Page art: the shared point renderer first, then the scenes that use it.
+  // async = false keeps injected scripts running in this order.
+  ['pointcloud.js', 'astronaut.js', 'page-art.js'].forEach(src => {
     if (document.querySelector('script[src="' + src + '"]')) return;
     const el = document.createElement('script');
     el.src = src;
+    el.async = false;
     document.head.appendChild(el);
   });
 
