@@ -211,3 +211,36 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
   pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
 }
 .stream-art.on { opacity: 1; }
+
+/* System page (system.js) */
+.sys-stage { position: relative; width: 100%; margin: 4px 0 28px; }
+.sys-stage canvas { position: absolute; inset: 0; display: block; }
+.sys-back { z-index: 0; } .sys-saturn { z-index: 1; } .sys-front { z-index: 2; cursor: pointer; }
+.sys-panel { max-width: 34em; }
+.sys-note { color: var(--text-secondary); font-size: 14px; line-height: 1.8; margin: 0 0 12px; }
+.sys-note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--text-primary); }
+.sys-note.err { color: #e5786d; }
+.sys-row { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+.sys-label { font-size: 12px; color: var(--text-tertiary); margin: 18px 0 6px; flex: none; }
+.sys-row .sys-label { margin: 0; width: 3em; }
+.sys-input {
+  flex: 1 1 auto; min-width: 0; padding: 8px 10px; font-size: 16px; font-family: inherit;
+  color: var(--text-primary); background: transparent; border: 1px solid var(--border); border-radius: 6px; outline: none;
+}
+.sys-input:focus { border-color: var(--text-tertiary); }
+.sys-title { font-size: 20px; font-weight: 500; border-color: transparent; padding-left: 0; }
+.sys-title:focus { border-color: var(--border); padding-left: 10px; }
+.sys-list { list-style: none; margin: 8px 0; padding: 0; }
+.sys-list li { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.sys-list li:last-child { border-bottom: none; }
+.sys-link { background: none; border: none; padding: 8px 0; font: inherit; font-size: 15px; color: var(--text-primary); cursor: pointer; text-align: left; flex: 1; }
+.sys-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sys-count { font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.sys-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.sys-danger { margin-top: 24px; }
+.sys-status { min-height: 18px; font-size: 12px; color: var(--text-tertiary); margin: 10px 0 0; }
+.sys-status.err { color: #e5786d; }
+.sys-center {
+  margin: -14px 0 28px; text-align: center; color: var(--text-primary);
+  font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 26px; letter-spacing: -0.005em;
+}

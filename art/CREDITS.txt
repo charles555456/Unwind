@@ -10,6 +10,11 @@ hands.bin
   Public domain. Source file: Wikimedia Commons,
   "Michelangelo - Creation of Adam (cropped).jpg".
 
+saturn.bin
+  Saturn seen by Voyager 2 in August 1981, NASA/JPL (PIA01364). Public domain.
+  https://images.nasa.gov/details/PIA01364
+  Used at the centre of the private System page.
+
 The conversion keeps only the subject (black space for the astronaut, a
 colour key plus region filter for the hands) and samples brighter areas
 more densely. Format: b'UPTS', u16 width, u16 height, u32 count, then

@@ -32,7 +32,7 @@
 
   // Page art: the shared point renderer first, then the scenes that use it.
   // async = false keeps injected scripts running in this order.
-  ['pointcloud.js', 'astronaut.js', 'page-art.js'].forEach(src => {
+  ['pointcloud.js', 'astronaut.js', 'page-art.js', 'system.js'].forEach(src => {
     if (document.querySelector('script[src="' + src + '"]')) return;
     const el = document.createElement('script');
     el.src = src;
