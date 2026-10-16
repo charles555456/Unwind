@@ -144,6 +144,7 @@
     for (const n of N) {
       if (n.kind === 'center') { n.x = 0; n.y = 0; n.vx = n.vy = 0; continue; }
       if (n.fx != null) { n.x = n.fx; n.y = n.fy; n.vx = n.vy = 0; continue; }
+      if (st.squash > 1) n.vy -= n.y * 0.16 * a * (1 - 1 / st.squash);
       n.vx *= 0.6; n.vy *= 0.6;
       n.x += n.vx; n.y += n.vy;
     }
@@ -151,9 +152,20 @@
   }
 
   // ── view: fit the whole graph in the frame, eased ──
+  // on a computer the stage runs edge to edge, out of the reading column
+  const WIDE = 900;
   function layout() {
-    const W = Math.round(st.wrap.clientWidth || 600);
-    const H = Math.round(Math.max(420, Math.min(620, W * 0.82)));
+    const docW = document.documentElement.clientWidth;
+    st.wide = docW >= WIDE;
+    st.wrap.style.width = ''; st.wrap.style.marginLeft = '';
+    if (st.wide) {
+      st.wrap.style.width = docW + 'px';
+      st.wrap.style.marginLeft = -Math.round(st.wrap.parentNode.getBoundingClientRect().left) + 'px';
+    }
+    const W = Math.round(st.wide ? docW : st.wrap.clientWidth || 600);
+    const H = Math.round(st.wide ? Math.max(520, Math.min(900, window.innerHeight - 180)) : Math.max(420, Math.min(620, W * 0.82)));
+    // a wide frame flattens the layout so the graph spreads sideways
+    st.squash = st.wide ? Math.min(2.4, W / H) : 1;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     st.W = W; st.H = H;
     st.wrap.style.height = H + 'px';
@@ -167,7 +179,8 @@
       x0 = Math.min(x0, n.x - n.bw / 2); x1 = Math.max(x1, n.x + n.bw / 2);
       y0 = Math.min(y0, n.y - n.r - 6); y1 = Math.max(y1, n.y - n.r + n.bh);
     }
-    const s = Math.min(1.25, (st.W - 24) / (x1 - x0), (st.H - 24) / (y1 - y0));
+    const pad = st.wide ? 64 : 24;
+    const s = Math.min(st.wide ? 2.4 : 1.25, (st.W - pad * 2) / (x1 - x0), (st.H - 24) / (y1 - y0));
     const tx = st.W / 2 - (x0 + x1) / 2 * s, ty = st.H / 2 - (y0 + y1) / 2 * s;
     const v = st.view, k = instant ? 1 : 0.06;
     v.s += (s - v.s) * k; v.x += (tx - v.x) * k; v.y += (ty - v.y) * k;
@@ -534,7 +547,7 @@
       if (!unlocked()) { st.map = null; st.nodes = null; st.loadState = 'idle'; st.selected = null; st.hover = null; }
       if (onPage()) show();
     };
-    window.addEventListener('resize', () => { if (onPage()) { layout(); fit(true); redraw(); } });
+    window.addEventListener('resize', () => { if (onPage()) { layout(); if (st.nodes) st.alpha = Math.max(st.alpha, 0.3); fit(true); redraw(); } });
     new MutationObserver(() => { st.ink = window.UnwindPoints ? UnwindPoints.readInk() : st.ink; if (onPage()) redraw(); })
       .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     if (onPage()) show();
