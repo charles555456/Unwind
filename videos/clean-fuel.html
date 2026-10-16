@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="影片重點：野心本身中性，問題是燃料。用感恩與「創造性謙卑」把恐懼驅動的髒燃料，換成可持續的乾淨燃料。">
+<title>乾淨燃料</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: single reading column; soot (dirty fuel) vs clear water-teal (clean fuel) as the two poles */
+:root{
+  --bg:#F3F5F4; --surface:#FFFFFF; --ink:#161C1B; --muted:#5A6664; --line:#D6DDDB;
+  --soot:#4A4440; --soot-soft:#E8E4E1; --clean:#0F7F78; --clean-soft:#DDF1EE;
+  --serif:"Noto Serif TC","Songti TC",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1312; --surface:#161D1C; --ink:#E4EBE9; --muted:#97A5A2; --line:#283331;
+    --soot:#C9BEB6; --soot-soft:#2B2522; --clean:#4FD1C3; --clean-soft:#123230;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1312; --surface:#161D1C; --ink:#E4EBE9; --muted:#97A5A2; --line:#283331;
+  --soot:#C9BEB6; --soot-soft:#2B2522; --clean:#4FD1C3; --clean-soft:#123230;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.75;padding-inline:16px;padding-block:40px 64px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+a{color:inherit}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:clamp(2rem,6vw,2.9rem);font-weight:900}
+h2{font-size:1.6rem;font-weight:900}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0}
+.eyebrow{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ts{font-family:var(--mono);font-size:.75rem;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.ts:hover,.ts:focus-visible{color:var(--ink);border-color:var(--ink);outline:none}
+header{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:1.1rem;color:var(--muted);max-width:60ch}
+.lede strong{color:var(--ink)}
+
+.equation{padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:10px}
+.equation .formula{font-family:var(--serif);font-size:1.3rem;font-weight:900}
+.equation .formula span{color:var(--soot);background:var(--soot-soft);padding:0 6px;border-radius:4px}
+.equation small{color:var(--muted);font-size:.9rem}
+
+.thesis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.thesis div{padding:16px;border-top:3px solid var(--soot);background:var(--surface)}
+.thesis div+div{border-top-color:var(--clean)}
+.thesis b{display:block;font-family:var(--serif);font-size:1.05rem;margin-bottom:4px}
+.thesis p{color:var(--muted);font-size:.93rem}
+
+section{display:flex;flex-direction:column;gap:20px}
+.stage-tag{display:inline-flex;align-self:flex-start;font-family:var(--mono);font-size:.75rem;padding:3px 10px;border-radius:99px;background:var(--line);color:var(--ink)}
+.dirty .stage-tag{background:var(--soot-soft);color:var(--soot)}
+.cleans .stage-tag{background:var(--clean-soft);color:var(--clean)}
+
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{display:grid;grid-template-columns:1fr auto;gap:4px 16px;padding:16px 0;border-bottom:1px solid var(--line)}
+.list li:first-child{border-top:1px solid var(--line)}
+.list li p{grid-column:1/-1;color:var(--muted);font-size:.95rem}
+
+blockquote{margin:0;padding:4px 0 4px 18px;border-left:2px solid var(--clean);font-family:var(--serif);font-size:1.05rem}
+blockquote cite{display:block;font-family:var(--sans);font-style:normal;font-size:.82rem;color:var(--muted);margin-top:6px}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-weight:500;font-size:.75rem;color:var(--muted);letter-spacing:.05em}
+td:first-child{font-weight:700;white-space:nowrap}
+
+.paradox{display:grid;grid-template-columns:1fr auto 1fr;gap:8px 12px;align-items:center;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:10px;font-family:var(--serif);font-weight:700}
+.paradox span:nth-child(3n+1){text-align:right;color:var(--soot)}
+.paradox span:nth-child(3n+2){font-family:var(--mono);font-weight:500;font-size:.75rem;color:var(--muted)}
+.paradox span:nth-child(3n){color:var(--clean)}
+
+.callout{padding:20px;border-radius:10px;background:var(--clean-soft);display:flex;flex-direction:column;gap:8px}
+.callout h3{color:var(--clean)}
+.note{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+
+.actions{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:act}
+.actions li{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.actions li>*{min-width:0}
+.actions li::before{counter-increment:act;content:counter(act);grid-row:1/span 3;font-family:var(--serif);font-weight:900;font-size:1.6rem;line-height:1;color:var(--clean)}
+.actions .when{font-family:var(--mono);font-size:.75rem;color:var(--clean)}
+.actions p{color:var(--muted);font-size:.95rem}
+.actions p b{color:var(--ink);font-weight:700}
+
+@media (max-width:560px){
+  .thesis{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<article>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">YouTube 重點整理 · 27 分鐘 · Mikey Posada · <a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8" target="_blank" rel="noopener">看原片</a></span>
+  <h1>野心沒有錯，<br>錯的是燃料。</h1>
+  <p class="lede">Brady、Jordan、Phelps 都靠一股「我要證明給你看」的狠勁登頂。這種<strong>髒燃料</strong>在外面很有效，在裡面卻慢慢把人燒乾，因為它底下是恐懼。影片的提議：照樣追大目標，但把燃料換成<strong>感恩與玩心</strong>，從「我已經足夠」出發。</p>
+</header>
+
+<div class="equation">
+  <span class="eyebrow">髒燃料的隱藏合約 <a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=72s" target="_blank" rel="noopener">01:12</a></span>
+  <p class="formula">在得到 <span>X</span> 之前，我不配擁有 Y。</p>
+  <small>X ＝ 外在指標：錢、成就、外表、地位、物品。Y ＝ 你真正想要的：愛、平靜、感恩、深層滿足、喜悅、玩心。</small>
+</div>
+
+<div class="thesis">
+  <div><b>髒燃料 Dirty Fuel</b><p>匱乏、不夠好、要證明自己。外在結果漂亮，內在是恐懼，終點是倦怠。</p></div>
+  <div><b>乾淨燃料 Clean Fuel</b><p>感恩、謙卑、為了好玩而做。同樣有野心，但能自我再生、走得久。</p></div>
+</div>
+
+<section>
+  <span class="stage-tag">PART 1 · 心理生存</span>
+  <h2>你做的每件事，都在保護一個身份</h2>
+  <ul class="list">
+    <li><h3>生存不只是身體，也是自我認同</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=241s" target="_blank" rel="noopener">04:01</a>
+      <p>人類行為的底層驅力是生存。除了食物和住所，我們還拼命保護「我是誰」：名字、國籍、職業、族群、政黨。這些標籤被威脅時，身體啟動的是同一套戰或逃反應。</p></li>
+    <li><h3>情緒先決定，理性後解釋</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=313s" target="_blank" rel="noopener">05:13</a>
+      <p>大腦情緒區受損的人會連塗哪種果醬都決定不了，因為失去了風險與價值感。情緒是告訴你「生存得怎樣」的資料，理智只是達成情緒目的的工具。</p></li>
+    <li><h3>多數人不知道自己為何做這些事</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=461s" target="_blank" rel="noopener">07:41</a>
+      <p>讀書、工作、選伴侶、投票，我們以為理由很理性，其實都在下游服務生存。小心別只看到別人的盲點：這件事作者自己也有。</p></li>
+  </ul>
+  <blockquote>沒被意識到的東西會主宰你的人生，而你會稱它為命運。<cite>作者引用榮格（意譯）<a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=164s" target="_blank" rel="noopener">02:44</a></cite></blockquote>
+</section>
+
+<section class="dirty">
+  <span class="stage-tag">PART 2 · 髒燃料</span>
+  <h2>有限的東西，填不滿無限的渴望</h2>
+  <p>野心是想要更多，本身中性。生活品質取決於你如何詮釋外在事件，不取決於事件本身。所以同樣的處境，兩個人會有完全不同的感受。<a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=585s" target="_blank" rel="noopener">09:45</a></p>
+  <ul class="list">
+    <li><h3>你想要的感覺是無限的，追的東西是有限的</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=687s" target="_blank" rel="noopener">11:27</a>
+      <p>錢、關注、外表、成就都會變，也不完全由你控制。把自我價值蓋在上面，地基就是沙。達標之後依然覺得不夠。</p></li>
+    <li><h3>另一面是怕失去</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=874s" target="_blank" rel="noopener">14:34</a>
+      <p>身份建在外物上，就會一直怕它被拿走、怕在乎的人不認可。</p></li>
+  </ul>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>案例</th><th>外在成就</th><th>髒燃料的代價</th></tr></thead>
+      <tbody>
+        <tr><td>Michael Jordan <a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=752s" target="_blank" rel="noopener">12:32</a></td><td>六冠、史上最佳</td><td>名人堂演講多半在清算舊帳：誰不看好他、哪次被刷下。登頂了還是沒「到」。</td></tr>
+        <tr><td>Michael Phelps <a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=832s" target="_blank" rel="noopener">13:52</a></td><td>奧運獎牌最多</td><td>退役後陷入嚴重憂鬱，一度想輕生。</td></tr>
+        <tr><td>創業者 <a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=858s" target="_blank" rel="noopener">14:18</a></td><td>花 10 年把公司賣到 1 億美元</td><td>身份隨公司一起賣掉，不知道接下來要幹嘛。這種故事很常見。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="cleans">
+  <span class="stage-tag">PART 3 · 換成乾淨燃料</span>
+  <h2>天賦不是來自你，是經過你</h2>
+  <ul class="list">
+    <li><h3>創造性謙卑 Creative Humility</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=908s" target="_blank" rel="noopener">15:08</a>
+      <p>你的細胞、智商、語言、道路、醫院、你依賴的科技，都不是你造的。成就是無數因果和他人共同促成的。把功勞全攬在自己身上，就得獨自防守它，失敗也變成全是你的錯。</p></li>
+    <li><h3>你的生命是禮物</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=1027s" target="_blank" rel="noopener">17:07</a>
+      <p>作者引用的說法是你出生的機率小到近乎奇蹟。你仍然可以努力，但角色是「管理這份禮物的人」：因為好玩、因為可以，而不是因為必須證明自己。</p></li>
+    <li><h3>實作：連結感恩與敬畏</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=1170s" target="_blank" rel="noopener">19:30</a>
+      <p>看看你坐的椅子、吃的食物、讀懂這段話的大腦：都不是你做的。當你被敬畏填滿，小我就沒有位置，「大我」才有空間。</p></li>
+    <li><h3>不怕犯錯</h3><a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=1288s" target="_blank" rel="noopener">21:28</a>
+      <p>東西不是從你產生的，你只是在服務它，犯錯被評判的恐懼就鬆開了。這就是作者說的「自我死亡」：看清那個被建構的小自我不是你。</p></li>
+  </ul>
+
+  <h3>像父母看孩子摔車那樣看你的小我 <a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=1357s" target="_blank" rel="noopener">22:37</a></h3>
+  <p>孩子剛拆輔助輪摔倒、大哭。好父母不會跟著崩潰、把車收起來兩個月。他會問：痛嗎？手能動嗎？怎麼摔的？那要再試一次嗎？你的小我也會把成功或失敗講成天大的事。你是背後那個覺察，可以關心它、對它有恩典，但不跟著它一起慌。<a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=1466s" target="_blank" rel="noopener">24:26</a></p>
+</section>
+
+<section>
+  <span class="eyebrow">結論 · 握住矛盾 <a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=1569s" target="_blank" rel="noopener">26:09</a></span>
+  <h2>現在就選擇感受「足夠」，再出發</h2>
+  <p>錢、權、成功都沒問題。問題是以為得到它們之後才會終於覺得自己值得被愛。愛、感恩、豐盛、敬畏這些感受，現在就可以自己生出來。從那個地方出發，照樣全力投入世界。</p>
+  <div class="paradox" aria-label="要同時握住的矛盾">
+    <span>有野心</span><span>同時</span><span>懷感恩</span>
+    <span>不放棄</span><span>同時</span><span>帶玩心</span>
+    <span>想要更多</span><span>同時</span><span>活在當下</span>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">行動指南 · 讀完就做</span>
+  <h2>三件事，從今晚開始</h2>
+  <ol class="actions">
+    <li><h3>寫出你的 X 與 Y</h3><span class="when">今晚 · 10 分鐘 · 對應 01:12 隱藏合約</span>
+      <p>在紙上寫完這句：<b>「在我得到 ＿＿ 之前，我不配 ＿＿。」</b>寫 3 個版本（交易、Unwind 網站、身體各一）。每個 Y 旁邊寫一件今天就能給自己的小事，例如「平靜：收盤後散步 10 分鐘，不看盤」。</p></li>
+    <li><h3>覆盤時加一欄「燃料檢查」</h3><span class="when">每個交易日收盤後 · 2 分鐘 · 對應 09:45 野心中性</span>
+      <p>N225 覆盤筆記多一行：<b>今天進場的理由是 setup，還是想「扳回來」、想證明自己？</b>標記髒或乾淨。一週後數一數髒燃料那幾筆的勝率和停損紀律，看清楚恐懼在你的帳戶裡花了多少錢。</p></li>
+    <li><h3>用「摔車父母」回應一次失誤</h3><span class="when">下次虧損或作品沒人看時 · 5 分鐘 · 對應 22:37</span>
+      <p>不要罵自己，照父母那四句問：<b>傷到哪？還能動嗎？怎麼發生的？要再試一次嗎？</b>把答案寫在 Kobo 筆記或 Read Later 這篇的劃線裡。目標是把失誤從「我不夠好」降級成「鞋帶卡進鏈條」。</p></li>
+  </ol>
+</section>
+
+<div class="callout">
+  <h3>一句話帶走</h3>
+  <p>你已經足夠，所以可以放手去追。驅動你的如果是感恩和好玩，你贏了不會空虛，輸了也不會崩潰。<a class="ts" href="https://www.youtube.com/watch?v=r67Lqa7GTs8&t=1505s" target="_blank" rel="noopener">25:05</a></p>
+</div>
+
+<p class="note">影片無業配；結尾有作者頻道與 Podcast 的自我宣傳（26:40 起），以上重點已排除。本頁根據影片字幕整理。</p>
+
+</div>
+</article>
+</body>
+</html>
