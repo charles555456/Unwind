@@ -1,14 +1,20 @@
 /*
  * System — the owner's life systems as a knowledge graph (Private only).
  *
- * Charles is the node in the middle; each system is linked to him, and each
- * item to its system. An item named under two systems becomes one node with
- * two links, so overlaps show as bridges. Nodes are small point spheres like
- * the home page; a force layout spreads them out on first view, then they
- * barely sway. Hover lights a node and its neighbours, drag moves one, tap
- * opens a system in the editor below. The map lives only in the private
- * database (private_settings key "system_map"), read and written with the
- * Private password; nothing about it ships in the site's files.
+ * The map is a tree: Charles at the root, his systems under him, their items
+ * under them, as deep as he likes. Every node can hold a note and links.
+ *
+ * The graph shows one node in the middle with two rings of what is under it.
+ * Tapping something that has sub-items makes it the new middle; tapping a
+ * leaf opens it in the side panel, where its note, links and sub-items are
+ * edited. Items with the same name under two siblings are drawn as one node
+ * with two links, so overlaps show as bridges. Nodes are small point spheres
+ * like the home page; a force layout spreads them out, then they barely sway.
+ *
+ * The map lives only in the private database (private_settings key
+ * "system_map"), read and written with the Private password; nothing about
+ * it ships in the site's files. Older maps (center / systems / items) are
+ * read and upgraded on the first save, keeping the old copy as "legacy".
  *
  * Inserts its own nav button and page; index.html is unchanged.
  */
@@ -23,9 +29,11 @@
   const uid = () => Math.random().toString(36).slice(2, 9);
 
   const st = {
-    page: null, wrap: null, cv: null, panel: null, statusEl: null,
-    W: 0, H: 0, map: null, loadState: 'idle', selected: null, hits: [],
-    nodes: null, edges: [], byId: null, alpha: 0, alphaTarget: 0, view: { s: 1, x: 0, y: 0 },
+    page: null, wrap: null, stage: null, cv: null, panel: null, crumbs: null, statusEl: null,
+    W: 0, H: 0, wide: false, squash: 1,
+    map: null, index: new Map(), loadState: 'idle', path: ['root'], sel: null, hits: [],
+    nodes: null, edges: [], byId: null, gOf: new Map(), sig: '',
+    alpha: 0, alphaTarget: 0, view: { s: 1, x: 0, y: 0 },
     hover: null, press: null, dragging: null,
     raf: 0, running: false, last: 0, saveTimer: 0, ink: [242, 242, 242]
   };
@@ -40,7 +48,7 @@
     }
     return pts;
   }
-  const CENTER_PTS = sphere(260), SAT_PTS = sphere(120);
+  const CENTER_PTS = sphere(260), SAT_PTS = sphere(120), SMALL_PTS = sphere(40);
 
   function drawSphere(ctx, pts, cx, cy, R, t, alpha) {
     const rot = reduce ? 0.5 : t * 0.6, c = Math.cos(rot), s = Math.sin(rot);
@@ -56,61 +64,110 @@
     }
   }
 
-  // ── the graph: Charles, the systems around him, their items ──
-  // An item with the same name under two systems is one node with two links,
-  // so what the systems share shows as a bridge between them.
+  // ── the tree ──
+  const isUrl = u => /^https?:\/\/\S+$/i.test(String(u || ''));
+  function normNode(n, isRoot) {
+    const o = typeof n === 'string' ? { name: n } : (n || {});
+    return {
+      id: isRoot ? 'root' : String(o.id || uid()),
+      name: String(o.name || ''),
+      note: String(o.note || ''),
+      links: (o.links || []).filter(l => l && isUrl(l.url)).map(l => ({ url: String(l.url), title: String(l.title || '') })),
+      children: (o.children || o.items || []).map(c => normNode(c))
+    };
+  }
+  const cleanLinks = ls => (ls || []).filter(l => Array.isArray(l) && l.length === 2).map(l => [String(l[0]), String(l[1])]);
+
+  function normalise(v) {
+    const m = typeof v === 'string' ? JSON.parse(v) : (v || {});
+    if (m.root) return { v: 2, root: normNode(m.root, true), links: cleanLinks(m.links), legacy: m.legacy };
+    // the first version: { center, systems: [{ id, name, items }], links }
+    const root = normNode({ name: m.center || 'Charles', children: m.systems || [] }, true);
+    return { v: 2, root, links: cleanLinks(m.links), legacy: m.systems ? m : undefined };
+  }
+
+  function reindex() {
+    st.index = new Map();
+    const walk = (n, parent, depth) => { st.index.set(n.id, { node: n, parent, depth }); n.children.forEach(c => walk(c, n, depth + 1)); };
+    if (st.map) walk(st.map.root, null, 0);
+    st.path = st.path.filter(id => st.index.has(id));
+    if (!st.path.length) st.path = ['root'];
+    if (st.sel && !st.index.has(st.sel)) st.sel = null;
+  }
+  const node = id => { const e = st.index.get(id); return e ? e.node : null; };
+  const parentOf = id => { const e = st.index.get(id); return e ? e.parent : null; };
+  const focusId = () => st.path[st.path.length - 1];
+  const hasContent = n => !!(n.note.trim() || n.links.length);
+  function pathTo(id) {
+    const out = [];
+    for (let n = node(id); n; n = parentOf(n.id)) out.unshift(n.id);
+    return out.length ? out : ['root'];
+  }
+
+  // ── the graph: the node in focus, what is under it, and one ring further ──
   const norm = s => String(s || '').trim().toLowerCase();
   const SANS = 'Inter, "PingFang TC", "Noto Sans TC", sans-serif';
   const FONTS = {
     center: k => 'italic 400 ' + Math.round(24 * k) + 'px "Instrument Serif", Georgia, serif',
-    system: k => '500 ' + (13 * k).toFixed(1) + 'px ' + SANS,
-    item: k => '400 ' + (11.5 * k).toFixed(1) + 'px ' + SANS
+    child: k => '500 ' + (13 * k).toFixed(1) + 'px ' + SANS,
+    leaf: k => '400 ' + (11.5 * k).toFixed(1) + 'px ' + SANS
   };
 
   function rebuild() {
+    const focus = node(focusId());
     const old = new Map((st.nodes || []).map(n => [n.id, n]));
-    const nodes = [], edges = [], byId = new Map();
-    const add = (id, kind, label, near) => {
+    const nodes = [], edges = [], byId = new Map(), gOf = new Map();
+    const add = (id, kind, tn, near) => {
       let n = byId.get(id);
-      if (n) return n;
-      const was = old.get(id);
-      n = was || { id, x: (near ? near.x : 0) + (Math.random() - 0.5) * 12, y: (near ? near.y : 0) + (Math.random() - 0.5) * 12, vx: 0, vy: 0, ph: Math.random() * 6.28 };
-      n.kind = kind; n.label = label; n.sys = [];
-      n.r = kind === 'center' ? 18 : kind === 'system' ? 9 : 1.6;
-      n.charge = kind === 'center' ? 4 : kind === 'system' ? 2.2 : 0.8;
-      // the box the node and its label take, for collisions
-      const mctx = st.cv.getContext('2d');
-      mctx.font = FONTS[kind](1);
-      n.bw = Math.max(n.r * 2, mctx.measureText(label).width) + 14;
-      n.bh = n.r * 2 + 5 + (kind === 'center' ? 24 : 15) + 6;
-      nodes.push(n); byId.set(id, n);
+      if (!n) {
+        n = old.get(id) || { id, x: (near ? near.x : 0) + (Math.random() - 0.5) * 12, y: (near ? near.y : 0) + (Math.random() - 0.5) * 12, vx: 0, vy: 0, ph: Math.random() * 6.28 };
+        n.kind = kind; n.label = tn.name; n.tree = [];
+        n.r = kind === 'center' ? 18 : kind === 'child' ? 9 : 1.6;
+        n.charge = kind === 'center' ? 4 : kind === 'child' ? 2.2 : 0.8;
+        // the box the node and its label take, for collisions
+        const mctx = st.cv.getContext('2d');
+        mctx.font = FONTS[kind](1);
+        n.bw = Math.max(n.r * 2, mctx.measureText(n.label).width) + 14;
+        n.bh = n.r * 2 + 5 + (kind === 'center' ? 24 : 15) + 6;
+        nodes.push(n); byId.set(id, n);
+      }
+      if (!n.tree.includes(tn.id)) n.tree.push(tn.id);
+      n.full = n.tree.some(t => hasContent(node(t)));
+      n.kids = n.tree.reduce((k, t) => k + node(t).children.length, 0);
+      gOf.set(tn.id, n);
       return n;
     };
-    const c = add('c', 'center', st.map.center);
+    const c = add('n:' + focus.id, 'center', focus);
     c.x = 0; c.y = 0;
-    const systems = st.map.systems;
-    systems.forEach((sys, i) => {
-      const a = i / Math.max(1, systems.length) * Math.PI * 2 - Math.PI / 2;
-      const sn = add('s:' + sys.id, 'system', sys.name, { x: Math.cos(a) * 24, y: Math.sin(a) * 24 });
-      sn.sys = [sys.id];
-      edges.push({ a: c, b: sn, len: 150, k: 0.7 });
+    const kids = focus.children;
+    kids.forEach((ch, i) => {
+      const a = i / Math.max(1, kids.length) * Math.PI * 2 - Math.PI / 2;
+      const cn = add('n:' + ch.id, 'child', ch, { x: Math.cos(a) * 24, y: Math.sin(a) * 24 });
+      edges.push({ a: c, b: cn, len: 150, k: 0.7 });
     });
-    systems.forEach(sys => {
-      const sn = byId.get('s:' + sys.id);
-      sys.items.forEach(it => {
-        const key = norm(it.name); if (!key) return;
-        const n = add('i:' + key, 'item', it.name, sn);
-        if (!n.sys.includes(sys.id)) { n.sys.push(sys.id); edges.push({ a: sn, b: n, len: 64, k: 0.6 }); }
+    const byName = new Map();
+    kids.forEach(ch => {
+      const cn = gOf.get(ch.id);
+      ch.children.forEach(g => {
+        const key = norm(g.name); if (!key) return;
+        const id = byName.get(key) || 'n:' + g.id;
+        byName.set(key, id);
+        const had = byId.get(id);
+        const gn = add(id, 'leaf', g, cn);
+        if (!had || !edges.some(e => e.a === cn && e.b === gn)) edges.push({ a: cn, b: gn, len: 64, k: 0.6 });
       });
     });
     st.map.links.forEach(([x, y]) => {
-      const a = byId.get('s:' + x), b = byId.get('s:' + y);
-      if (a && b) edges.push({ a, b, len: 170, k: 0.08, cross: true });
+      const a = gOf.get(x), b = gOf.get(y);
+      if (a && b && a !== b) edges.push({ a, b, len: 170, k: 0.08, cross: true });
     });
     nodes.forEach(n => { n.nb = new Set([n]); });
     edges.forEach(e => { e.a.nb.add(e.b); e.b.nb.add(e.a); });
-    st.nodes = nodes; st.edges = edges; st.byId = byId;
-    st.alpha = Math.max(st.alpha || 0, old.size ? 0.4 : 1);
+    // only a change in shape sets the layout moving again, not a typed note
+    const sig = nodes.map(n => n.id + n.label).join('|') + '#' + edges.map(e => e.a.id + '>' + e.b.id).join('|');
+    if (sig !== st.sig) st.alpha = Math.max(st.alpha || 0, old.size ? 0.4 : 1);
+    st.sig = sig;
+    st.nodes = nodes; st.edges = edges; st.byId = byId; st.gOf = gOf;
   }
 
   // a small force layout, in the manner of d3-force
@@ -151,26 +208,30 @@
     st.alpha += (st.alphaTarget - st.alpha) * 0.0228;
   }
 
-  // ── view: fit the whole graph in the frame, eased ──
-  // on a computer the stage runs edge to edge, out of the reading column
-  const WIDE = 900;
+  // ── view: on a computer the stage runs edge to edge, the panel floats at its right ──
+  const WIDE = 900, SIDE_W = 340;
+  const sideOpen = () => st.wide && st.loadState === 'ready' && !!st.map;
   function layout() {
     const docW = document.documentElement.clientWidth;
     st.wide = docW >= WIDE;
-    st.wrap.style.width = ''; st.wrap.style.marginLeft = '';
+    st.stage.style.width = ''; st.stage.style.marginLeft = '';
+    const colLeft = st.wrap.getBoundingClientRect().left, colRight = colLeft + st.wrap.clientWidth;
     if (st.wide) {
-      st.wrap.style.width = docW + 'px';
-      st.wrap.style.marginLeft = -Math.round(st.wrap.parentNode.getBoundingClientRect().left) + 'px';
+      st.stage.style.width = docW + 'px';
+      st.stage.style.marginLeft = -Math.round(colLeft) + 'px';
     }
-    const W = Math.round(st.wide ? docW : st.wrap.clientWidth || 600);
-    const H = Math.round(st.wide ? Math.max(520, Math.min(900, window.innerHeight - 180)) : Math.max(420, Math.min(620, W * 0.82)));
+    const W = Math.round(st.wide ? docW : st.stage.clientWidth || 600);
+    const H = Math.round(st.wide ? Math.max(520, Math.min(900, window.innerHeight - 200)) : Math.max(420, Math.min(620, W * 0.82)));
     // a wide frame flattens the layout so the graph spreads sideways
-    st.squash = st.wide ? Math.min(2.4, W / H) : 1;
+    st.squash = st.wide ? Math.min(1.8, (W - SIDE_W) / H) : 1;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     st.W = W; st.H = H;
-    st.wrap.style.height = H + 'px';
+    st.stage.style.height = H + 'px';
     st.cv.width = W * dpr; st.cv.height = H * dpr; st.cv.style.width = W + 'px'; st.cv.style.height = H + 'px';
     st.cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    st.panel.classList.toggle('side', sideOpen());
+    st.panel.style.right = sideOpen() ? Math.round(colRight - docW + 32) + 'px' : '';
+    st.panel.style.maxHeight = sideOpen() ? (H - 32) + 'px' : '';
   }
   function fit(instant) {
     if (!st.nodes || !st.nodes.length) return;
@@ -179,9 +240,12 @@
       x0 = Math.min(x0, n.x - n.bw / 2); x1 = Math.max(x1, n.x + n.bw / 2);
       y0 = Math.min(y0, n.y - n.r - 6); y1 = Math.max(y1, n.y - n.r + n.bh);
     }
-    const pad = st.wide ? 64 : 24;
-    const s = Math.min(st.wide ? 2.4 : 1.25, (st.W - pad * 2) / (x1 - x0), (st.H - 24) / (y1 - y0));
-    const tx = st.W / 2 - (x0 + x1) / 2 * s, ty = st.H / 2 - (y0 + y1) / 2 * s;
+    const pad = st.wide ? 64 : 24, inset = sideOpen() ? SIDE_W + 48 : 0;
+    const availW = st.W - pad * 2 - inset;
+    // a small graph should not be blown up to fill the frame
+    const cap = Math.min(st.wide ? 2.4 : 1.25, 1 + st.nodes.length / 14);
+    const s = Math.min(cap, availW / (x1 - x0), (st.H - 24) / (y1 - y0));
+    const tx = pad + availW / 2 - (x0 + x1) / 2 * s, ty = st.H / 2 - (y0 + y1) / 2 * s;
     const v = st.view, k = instant ? 1 : 0.06;
     v.s += (s - v.s) * k; v.x += (tx - v.x) * k; v.y += (ty - v.y) * k;
   }
@@ -196,8 +260,8 @@
     const ctx = st.cv.getContext('2d'), ink = st.ink.join(',');
     ctx.clearRect(0, 0, st.W, st.H);
 
-    // what is in focus: the hovered node, else the selected system, with their neighbours
-    const focus = st.hover || (st.selected && st.byId.get('s:' + st.selected)) || null;
+    // what is in focus: the hovered node, else the selected one, with their neighbours
+    const focus = st.hover || (st.sel && st.gOf.get(st.sel)) || null;
     const lit = n => !focus || focus.nb.has(n);
     // nodes breathe a little once settled
     const sway = reduce ? 0 : 1.6;
@@ -210,7 +274,7 @@
 
     ctx.lineWidth = 1;
     for (const e of st.edges) {
-      const on = focus && lit(e.a) && lit(e.b) && (e.a === focus || e.b === focus);
+      const on = focus && (e.a === focus || e.b === focus);
       const a = focus ? (on ? 0.42 : 0.05) : (e.cross ? 0.16 : 0.13);
       const pa = P.get(e.a), pb = P.get(e.b);
       ctx.strokeStyle = 'rgba(' + ink + ',' + a + ')';
@@ -224,13 +288,14 @@
     for (const n of st.nodes) {
       const p = P.get(n), on = lit(n), sel = focus === n;
       const dim = on ? 1 : 0.22;
-      const R = n.r * vs * (sel ? 1.25 : 1);
+      let R = n.r * vs * (sel ? 1.25 : 1);
       if (n.kind === 'center') drawSphere(ctx, CENTER_PTS, p.x, p.y, R, t * 0.5, dim);
-      else if (n.kind === 'system') drawSphere(ctx, SAT_PTS, p.x, p.y, R, t, (0.85) * dim);
+      else if (n.kind === 'child') drawSphere(ctx, SAT_PTS, p.x, p.y, R, t, (n.full || n.kids ? 0.9 : 0.6) * dim);
+      else if (n.kids) { R = 4.2 * vs; drawSphere(ctx, SMALL_PTS, p.x, p.y, R, t + n.ph, 0.85 * dim); }
       else {
-        // items are single points, a shared one slightly larger
-        const sz = (n.sys.length > 1 ? 3.4 : 2.6) * vs;
-        ctx.fillStyle = 'rgba(' + ink + ',' + (0.9 * dim).toFixed(3) + ')';
+        // a leaf is a single point: brighter when it holds a note or links, larger when shared
+        const sz = ((n.tree.length > 1 ? 3.4 : 2.6) + (n.full ? 0.6 : 0)) * vs * (sel ? 1.3 : 1);
+        ctx.fillStyle = 'rgba(' + ink + ',' + ((n.full ? 1 : 0.55) * dim).toFixed(3) + ')';
         ctx.fillRect(p.x - sz / 2, p.y - sz / 2, sz, sz);
       }
       st.hits.push({ n, x: p.x, y: p.y, r: Math.max(14, R + 8) });
@@ -238,7 +303,7 @@
       // label under the node
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.font = FONTS[n.kind](vs);
-      const la = n.kind === 'center' ? 0.95 : n.kind === 'system' ? 0.9 : focus && on ? 0.85 : 0.55;
+      const la = n.kind === 'center' ? 0.95 : n.kind === 'child' ? 0.9 : (focus && on) || n.full ? 0.85 : 0.55;
       ctx.fillStyle = 'rgba(' + ink + ',' + (la * dim).toFixed(3) + ')';
       const tw = ctx.measureText(n.label).width;
       const lx = Math.max(4 + tw / 2, Math.min(st.W - 4 - tw / 2, p.x));
@@ -264,6 +329,36 @@
   function stop() { st.running = false; cancelAnimationFrame(st.raf); }
   function redraw() { if (!st.running) { if (reduce && st.nodes) settle(); frame(performance.now()); } }
 
+  // ── moving through the tree ──
+  function shift(dx, dy) {
+    (st.nodes || []).forEach(n => { n.x += dx; n.y += dy; });
+    st.view.x -= dx * st.view.s; st.view.y -= dy * st.view.s;
+  }
+  // make a node the middle: it slides to the centre and what is under it spreads out
+  function goTo(id) {
+    if (!node(id) || id === focusId()) return;
+    const g = st.gOf.get(id), was = st.byId && st.byId.get('n:' + focusId());
+    if (g) shift(-g.x, -g.y);
+    else if (was) shift(150, 0);      // going up: the old middle steps aside
+    st.path = pathTo(id); st.sel = null; st.hover = null;
+    rebuild();
+    st.alpha = Math.max(st.alpha, 0.5);
+    renderCrumbs(); renderPanel(); redraw();
+  }
+  function up() { if (st.path.length > 1) goTo(st.path[st.path.length - 2]); }
+  // a node with sub-items becomes the middle; a leaf opens in the panel
+  function open(id) {
+    const n = node(id); if (!n) return;
+    if (n.children.length && id !== focusId()) goTo(id);
+    else select(id === focusId() ? null : id);
+  }
+  function select(id) {
+    st.sel = id;
+    renderPanel();
+    redraw();
+    if (id && !st.wide && st.panel.getBoundingClientRect().top > window.innerHeight - 80) st.panel.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }
+
   // ── data ──
   async function rpc(name, args) {
     const { data, error } = await sb.rpc(name, Object.assign({ pw: storedPassword }, args || {}));
@@ -286,19 +381,13 @@
       st.loadState = e.missing ? 'nodb' : 'error';
       st.error = e.message;
     }
-    renderPanel();
-    if (st.map) rebuild();
+    if (st.map) { reindex(); layout(); rebuild(); }
+    renderCrumbs(); renderPanel();
     if (st.map && onPage()) start();
   }
 
-  function normalise(v) {
-    const m = typeof v === 'string' ? JSON.parse(v) : (v || {});
-    return {
-      center: m.center || 'Charles',
-      systems: (m.systems || []).map(s => ({ id: s.id || uid(), name: String(s.name || ''), items: (s.items || []).map(it => ({ id: it.id || uid(), name: String(typeof it === 'string' ? it : it.name || '') })) })),
-      links: (m.links || []).filter(l => Array.isArray(l) && l.length === 2)
-    };
-  }
+  // the map changed: re-read the tree and the graph, keeping positions
+  function changed() { if (st.map) { reindex(); rebuild(); redraw(); } }
 
   function save() {
     changed();
@@ -317,10 +406,45 @@
     st.statusEl.classList.toggle('err', !!err);
   }
 
-  // ── panel under the map ──
+  // ── links ──
+  // "title https://…" keeps the title; a bare domain gets https://
+  function parseLink(text) {
+    text = String(text || '').trim();
+    if (!text) return null;
+    const m = text.match(/https?:\/\/\S+/i);
+    let url = m ? m[0] : text, title = m ? text.replace(m[0], '').trim() : '';
+    if (!m) { if (!/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(url)) return null; url = 'https://' + url; }
+    try { new URL(url); } catch (e) { return null; }
+    return { url, title };
+  }
+  function linkLabel(l) {
+    if (l.title) return l.title;
+    try {
+      const u = new URL(l.url);
+      const host = u.hostname.replace(/^www\./, '');
+      const last = decodeURIComponent(u.pathname).split('/').filter(Boolean).pop();
+      return last ? host + ' / ' + (last.length > 40 ? last.slice(0, 40) + '…' : last) : host;
+    } catch (e) { return l.url; }
+  }
+
+  // ── where you are ──
+  function renderCrumbs() {
+    const C = st.crumbs;
+    if (!C) return;
+    if (!st.map || st.loadState !== 'ready' || st.path.length < 2) { C.innerHTML = ''; return; }
+    C.innerHTML = st.path.map((id, i) => {
+      const n = node(id), last = i === st.path.length - 1;
+      return (i ? '<span class="sep" aria-hidden="true">›</span>' : '')
+        + (last ? `<span aria-current="page">${esc(n.name)}</span>` : `<button data-sys-crumb="${esc(id)}">${esc(n.name)}</button>`);
+    }).join('');
+  }
+
+  // ── the panel: the selected node, or the one in the middle ──
   function renderPanel() {
     const P = st.panel;
     if (!P) return;
+    st.statusEl = null;
+    P.classList.toggle('side', sideOpen());
     if (!unlocked()) {
       P.innerHTML = '<p class="sys-note">解鎖 Private 才看得到你的系統。</p><button class="x-btn small" data-x-goto="private">前往 Private</button>';
       return;
@@ -335,50 +459,49 @@
       P.innerHTML = '<p class="sys-note">還沒有你的系統圖。</p><button class="x-btn small primary" data-sys="init">從空白開始</button>';
       return;
     }
-    const sys = st.map.systems.find(s => s.id === st.selected);
-    if (!sys) {
-      P.innerHTML = `
-        <div class="sys-row">
-          <label class="sys-label" for="sysCenter">中心</label>
-          <input class="sys-input" id="sysCenter" value="${esc(st.map.center)}" maxlength="40">
-        </div>
-        <ul class="sys-list">${st.map.systems.map(s => `<li><button class="sys-link" data-sys-open="${s.id}">${esc(s.name)}</button><span class="sys-count">${s.items.length}</span></li>`).join('')}</ul>
-        <div class="sys-row">
-          <input class="sys-input" id="sysNew" placeholder="新增一個系統" maxlength="40">
-          <button class="x-btn small" data-sys="add-system">新增</button>
-        </div>
-        <p class="sys-status" id="sysStatus"></p>`;
-    } else {
-      const others = st.map.systems.filter(s => s.id !== sys.id);
-      const linked = id => st.map.links.some(([a, b]) => (a === sys.id && b === id) || (b === sys.id && a === id));
-      P.innerHTML = `
-        <button class="reader-back" data-sys="back">← 全部系統</button>
-        <div class="sys-row">
-          <input class="sys-input sys-title" id="sysName" value="${esc(sys.name)}" maxlength="40" aria-label="系統名稱">
-        </div>
-        <ul class="sys-list">${sys.items.map(it => `<li>
-            <input class="sys-input" data-sys-item="${it.id}" value="${esc(it.name)}" maxlength="60" aria-label="項目">
-            <button class="x-btn small danger" data-sys-del-item="${it.id}" aria-label="刪除 ${esc(it.name)}">刪除</button>
-          </li>`).join('')}</ul>
-        <div class="sys-row">
-          <input class="sys-input" id="sysNewItem" placeholder="新增項目" maxlength="60">
-          <button class="x-btn small" data-sys="add-item">新增</button>
-        </div>
-        ${others.length ? `<p class="sys-label">和這些系統有關</p>
-        <div class="sys-chips">${others.map(o => `<button class="review-tab ${linked(o.id) ? 'active' : ''}" data-sys-link="${o.id}">${esc(o.name)}</button>`).join('')}</div>` : ''}
-        <div class="sys-row sys-danger"><button class="x-btn small danger" data-sys="del-system">刪除這個系統</button></div>
-        <p class="sys-status" id="sysStatus"></p>`;
-    }
+    const id = st.sel || focusId(), n = node(id), parent = parentOf(id);
+    const isRoot = id === 'root', isMiddle = id === focusId();
+    const siblings = parent ? parent.children.filter(s => s.id !== id) : [];
+    const linked = sid => st.map.links.some(([a, b]) => (a === id && b === sid) || (b === id && a === sid));
+    const meta = c => [c.children.length ? c.children.length : '', hasContent(c) ? '•' : ''].filter(Boolean).join(' ');
+    P.innerHTML = `
+      <div class="sys-p-head">
+        <input class="sys-input sys-title" id="sysName" value="${esc(n.name)}" maxlength="60" aria-label="名稱">
+        ${isMiddle ? (st.path.length > 1 ? '<button class="sys-x" data-sys="up" aria-label="回上一層" title="回上一層">↑</button>' : '') : '<button class="sys-x" data-sys="close" aria-label="關閉" title="關閉">×</button>'}
+      </div>
+      <textarea class="sys-text" id="sysNote" rows="3" placeholder="寫點什麼…" aria-label="筆記">${esc(n.note)}</textarea>
+      <p class="sys-label">連結</p>
+      ${n.links.length ? `<ul class="sys-links">${n.links.map((l, i) => `<li>
+          <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.url)}">${esc(linkLabel(l))} <span aria-hidden="true">↗</span></a>
+          <button class="sys-del" data-sys-del-link="${i}" aria-label="移除連結 ${esc(linkLabel(l))}">×</button>
+        </li>`).join('')}</ul>` : ''}
+      <div class="sys-row">
+        <input class="sys-input" id="sysNewLink" placeholder="貼上連結（前面可加標題）" inputmode="url" autocomplete="off">
+        <button class="x-btn small" data-sys="add-link">加入</button>
+      </div>
+      <p class="sys-label">子項目</p>
+      ${n.children.length ? `<ul class="sys-list">${n.children.map(c => `<li><button class="sys-link" data-sys-open="${esc(c.id)}">${esc(c.name)}</button><span class="sys-count">${meta(c)}</span></li>`).join('')}</ul>` : ''}
+      <div class="sys-row">
+        <input class="sys-input" id="sysNewChild" placeholder="新增子項目" maxlength="60" autocomplete="off">
+        <button class="x-btn small" data-sys="add-child">新增</button>
+      </div>
+      ${siblings.length ? `<p class="sys-label">和這些有關</p>
+      <div class="sys-chips">${siblings.map(o => `<button class="review-tab ${linked(o.id) ? 'active' : ''}" data-sys-link="${esc(o.id)}">${esc(o.name)}</button>`).join('')}</div>` : ''}
+      ${isRoot ? '' : '<div class="sys-row sys-danger"><button class="x-btn small danger" data-sys="del-node">刪除這個項目</button></div>'}
+      <p class="sys-status" id="sysStatus"></p>`;
     st.statusEl = P.querySelector('#sysStatus');
+    grow(P.querySelector('#sysNote'));
   }
+  function grow(ta) { if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(360, ta.scrollHeight + 2) + 'px'; } }
+  const current = () => node(st.sel || focusId());
 
-  // the map changed in the panel: rebuild the graph, keeping positions
-  function changed() { if (st.map) { rebuild(); redraw(); } }
-
-  function select(id) {
-    st.selected = id;
-    renderPanel();
-    redraw();
+  function addLink() {
+    const inp = st.panel.querySelector('#sysNewLink'), n = current();
+    if (!inp || !n) return;
+    const l = parseLink(inp.value);
+    if (!l) { status('這看起來不是連結', true); return; }
+    n.links.push(l); save(); renderPanel();
+    st.panel.querySelector('#sysNewLink').focus();
   }
 
   // ── events: hover lights a node and its neighbours, drag moves it, tap opens it ──
@@ -409,7 +532,7 @@
     }
     if (e.pointerType === 'mouse' && st.hover !== h.n) {
       st.hover = h.n;
-      st.cv.style.cursor = h.n && h.n.kind !== 'center' ? 'pointer' : 'default';
+      st.cv.style.cursor = h.n ? 'pointer' : 'default';
       if (!st.running) redraw();
     }
   }
@@ -422,46 +545,48 @@
     }
     if (!pr) return;
     const n = pr.n;
-    if (!n || n.kind === 'center') { if (st.selected) select(null); return; }
-    const id = n.kind === 'system' ? n.sys[0] : (n.sys.includes(st.selected) ? st.selected : n.sys[0]);
-    select(id === st.selected && n.kind === 'system' ? null : id);
+    if (!n || n.kind === 'center') { if (st.sel) select(null); return; }
+    const id = n.tree.includes(st.sel) ? st.sel : n.tree[0];
+    if (!node(id).children.length && id === st.sel) select(null);
+    else open(id);
   }
 
   document.addEventListener('click', e => {
     const t = e.target;
+    const crumb = t.closest('[data-sys-crumb]');
+    if (crumb && st.crumbs && st.crumbs.contains(crumb)) { goTo(crumb.dataset.sysCrumb); return; }
     if (!st.panel || !st.panel.contains(t)) return;
     const act = t.closest('[data-sys]');
     if (act) {
-      const a = act.dataset.sys;
-      if (a === 'init') { st.map = { center: 'Charles', systems: [], links: [] }; st.loadState = 'ready'; renderPanel(); save(); start(); }
-      if (a === 'back') select(null);
-      if (a === 'add-system') {
-        const inp = st.panel.querySelector('#sysNew'); const name = inp.value.trim(); if (!name) return;
-        const s = { id: uid(), name, items: [] }; st.map.systems.push(s); save(); select(s.id);
+      const a = act.dataset.sys, n = current();
+      if (a === 'init') { st.map = normalise({ center: 'Charles', systems: [] }); st.loadState = 'ready'; reindex(); layout(); rebuild(); renderPanel(); save(); start(); }
+      if (a === 'close') select(null);
+      if (a === 'up') up();
+      if (a === 'add-link') addLink();
+      if (a === 'add-child') {
+        const inp = st.panel.querySelector('#sysNewChild'); const name = inp.value.trim(); if (!n || !name) return;
+        n.children.push({ id: uid(), name, note: '', links: [], children: [] });
+        save(); renderPanel(); st.panel.querySelector('#sysNewChild').focus();
       }
-      if (a === 'add-item') {
-        const sys = st.map.systems.find(s => s.id === st.selected); const inp = st.panel.querySelector('#sysNewItem');
-        const name = inp.value.trim(); if (!sys || !name) return;
-        sys.items.push({ id: uid(), name }); save(); renderPanel(); st.panel.querySelector('#sysNewItem').focus();
-      }
-      if (a === 'del-system') {
-        const sys = st.map.systems.find(s => s.id === st.selected); if (!sys) return;
-        if (!confirm('刪除「' + sys.name + '」和它底下的項目？')) return;
-        st.map.systems = st.map.systems.filter(s => s.id !== sys.id);
-        st.map.links = st.map.links.filter(([x, y]) => x !== sys.id && y !== sys.id);
-        save(); select(null);
+      if (a === 'del-node') {
+        const parent = parentOf(n.id); if (!parent) return;
+        if (!confirm('刪除「' + n.name + '」' + (n.children.length ? '和底下所有項目' : '') + '？')) return;
+        const gone = new Set();
+        (function walk(x) { gone.add(x.id); x.children.forEach(walk); })(n);
+        parent.children = parent.children.filter(c => c.id !== n.id);
+        st.map.links = st.map.links.filter(([x, y]) => !gone.has(x) && !gone.has(y));
+        if (st.path.some(p => gone.has(p))) st.path = pathTo(parent.id);
+        st.sel = null;
+        save(); renderCrumbs(); renderPanel();
       }
       return;
     }
-    const open = t.closest('[data-sys-open]'); if (open) { select(open.dataset.sysOpen); return; }
-    const del = t.closest('[data-sys-del-item]');
-    if (del) {
-      const sys = st.map.systems.find(s => s.id === st.selected); if (!sys) return;
-      sys.items = sys.items.filter(it => it.id !== del.dataset.sysDelItem); save(); renderPanel(); return;
-    }
+    const op = t.closest('[data-sys-open]'); if (op) { open(op.dataset.sysOpen); return; }
+    const del = t.closest('[data-sys-del-link]');
+    if (del) { const n = current(); n.links.splice(+del.dataset.sysDelLink, 1); save(); renderPanel(); return; }
     const link = t.closest('[data-sys-link]');
     if (link) {
-      const a = st.selected, b = link.dataset.sysLink;
+      const a = st.sel || focusId(), b = link.dataset.sysLink;
       const i = st.map.links.findIndex(([x, y]) => (x === a && y === b) || (x === b && y === a));
       if (i >= 0) st.map.links.splice(i, 1); else st.map.links.push([a, b]);
       save(); renderPanel();
@@ -471,18 +596,27 @@
   document.addEventListener('change', e => {
     const t = e.target;
     if (!st.panel || !st.panel.contains(t) || !st.map) return;
-    if (t.id === 'sysCenter') { st.map.center = t.value.trim() || 'Charles'; save(); }
-    if (t.id === 'sysName') { const s = st.map.systems.find(x => x.id === st.selected); if (s) { s.name = t.value.trim() || s.name; save(); } }
-    if (t.dataset.sysItem) {
-      const s = st.map.systems.find(x => x.id === st.selected); const it = s && s.items.find(x => x.id === t.dataset.sysItem);
-      if (it) { it.name = t.value.trim() || it.name; save(); }
-    }
+    if (t.id === 'sysName') { const n = current(); if (n) { n.name = t.value.trim() || n.name; t.value = n.name; save(); renderCrumbs(); } }
+  });
+
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (!st.panel || !st.panel.contains(t) || !st.map) return;
+    if (t.id === 'sysNote') { const n = current(); if (n) { n.note = t.value; grow(t); save(); } }
+  });
+
+  document.addEventListener('paste', e => {
+    if (!st.panel || e.target.id !== 'sysNewLink' || !st.panel.contains(e.target)) return;
+    setTimeout(() => { if (parseLink(e.target.value) && !/\s/.test(e.target.value.trim())) addLink(); }, 0);
   });
 
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Enter' || e.isComposing || !st.panel || !st.panel.contains(e.target)) return;
-    if (e.target.id === 'sysNew') { e.preventDefault(); st.panel.querySelector('[data-sys="add-system"]').click(); }
-    if (e.target.id === 'sysNewItem') { e.preventDefault(); st.panel.querySelector('[data-sys="add-item"]').click(); }
+    if (!onPage() || e.isComposing) return;
+    const t = e.target, typing = /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
+    if (e.key === 'Escape' && !typing && st.map) { if (st.sel) select(null); else up(); return; }
+    if (e.key !== 'Enter' || !st.panel || !st.panel.contains(t)) return;
+    if (t.id === 'sysNewLink') { e.preventDefault(); addLink(); }
+    if (t.id === 'sysNewChild') { e.preventDefault(); st.panel.querySelector('[data-sys="add-child"]').click(); }
   });
 
   // ── build and wire into the site ──
@@ -504,15 +638,18 @@
         <h1 class="page-title">System</h1>
         <p class="page-subtitle">你、你的系統，和它們之間的連結</p>
       </div></div>
-      <div class="sys-stage" id="sysStage">
-        <canvas role="img" aria-label="關係圖：中間是你，連到你的各個系統，再連到每個系統的項目"></canvas>
-      </div>
-      <div class="sys-panel" id="sysPanel"></div>`;
+      <div class="sys-crumbs" id="sysCrumbs" role="navigation" aria-label="目前位置"></div>
+      <div class="sys-wrap">
+        <div class="sys-stage" id="sysStage">
+          <canvas role="img" aria-label="關係圖：中間是目前所在的項目，連到它底下的項目"></canvas>
+        </div>
+        <div class="sys-panel" id="sysPanel"></div>
+      </div>`;
     const inbox = document.getElementById('page-inbox');
     container.insertBefore(page, inbox ? inbox.nextSibling : null);
-    st.page = page; st.wrap = page.querySelector('#sysStage');
+    st.page = page; st.wrap = page.querySelector('.sys-wrap'); st.stage = page.querySelector('#sysStage');
     st.cv = page.querySelector('canvas');
-    st.panel = page.querySelector('#sysPanel');
+    st.panel = page.querySelector('#sysPanel'); st.crumbs = page.querySelector('#sysCrumbs');
     st.cv.addEventListener('pointerdown', onDown);
     st.cv.addEventListener('pointermove', onMove);
     st.cv.addEventListener('pointerup', onUp);
@@ -533,7 +670,7 @@
     layout();
     if (!st.view.x) { st.view.x = st.W / 2; st.view.y = st.H / 2; }
     if (unlocked() && st.loadState === 'idle') load();
-    else renderPanel();
+    else { renderCrumbs(); renderPanel(); }
     start();
   }
 
@@ -544,7 +681,7 @@
     const baseRenderPrivate = window.renderPrivate;
     window.renderPrivate = function () {
       baseRenderPrivate();
-      if (!unlocked()) { st.map = null; st.nodes = null; st.loadState = 'idle'; st.selected = null; st.hover = null; }
+      if (!unlocked()) { st.map = null; st.nodes = null; st.sig = ''; st.loadState = 'idle'; st.path = ['root']; st.sel = null; st.hover = null; renderCrumbs(); }
       if (onPage()) show();
     };
     window.addEventListener('resize', () => { if (onPage()) { layout(); if (st.nodes) st.alpha = Math.max(st.alpha, 0.3); fit(true); redraw(); } });

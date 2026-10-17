@@ -239,6 +239,38 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 .sys-danger { margin-top: 24px; }
 .sys-status { min-height: 18px; font-size: 12px; color: var(--text-tertiary); margin: 10px 0 0; }
 .sys-status.err { color: #e5786d; }
+.sys-wrap { position: relative; }
+.sys-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 22px; margin: -6px 0 2px; font-size: 13px; color: var(--text-tertiary); }
+.sys-crumbs button { background: none; border: none; padding: 2px 0; font: inherit; color: var(--text-tertiary); cursor: pointer; }
+.sys-crumbs button:hover { color: var(--text-primary); }
+.sys-crumbs [aria-current] { color: var(--text-primary); }
+.sys-crumbs .sep { opacity: 0.6; }
+.sys-p-head { display: flex; align-items: center; gap: 8px; }
+.sys-p-head .sys-title { flex: 1; }
+.sys-x { flex: none; width: 32px; height: 32px; background: none; border: 1px solid transparent; border-radius: 6px; color: var(--text-tertiary); font-size: 18px; line-height: 1; cursor: pointer; }
+.sys-x:hover { color: var(--text-primary); border-color: var(--border); }
+.sys-text {
+  display: block; width: 100%; box-sizing: border-box; min-height: 76px; margin: 10px 0 0; padding: 10px;
+  font: inherit; font-size: 15px; line-height: 1.7; color: var(--text-primary);
+  background: transparent; border: 1px solid var(--border); border-radius: 6px; outline: none; resize: none;
+}
+.sys-text:focus { border-color: var(--text-tertiary); }
+.sys-links { list-style: none; margin: 4px 0; padding: 0; }
+.sys-links li { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.sys-links a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--text-primary); text-decoration: none; }
+.sys-links a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sys-links a span { color: var(--text-tertiary); }
+.sys-del { flex: none; background: none; border: none; padding: 2px 6px; font-size: 16px; color: var(--text-tertiary); cursor: pointer; }
+.sys-del:hover { color: #e5786d; }
+/* on a computer the panel floats at the right of the full-width graph */
+@media (min-width: 900px) {
+  .sys-panel.side {
+    position: absolute; top: 20px; z-index: 2; width: 340px; max-width: none; box-sizing: border-box;
+    overflow-y: auto; padding: 16px 18px 12px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .sys-panel.side .sys-label { margin-top: 16px; }
+}
 
 /* Nav: unlocked, the row is wider than the 640px column. Centre it on the
    column instead of letting it run off to the right; when it fits (the
