@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="圖文重點：7 個問題，把模糊的「理想人生」拆成具體的一天、三個目標、幾個習慣和本週一個行動。">
+<title>理想人生七問</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: single reading column on graph paper; each question is a highlighted heading, grouped into 想清楚 → 拆障礙 → 動起來 */
+:root{
+  --bg:#F3F4F2; --surface:#FFFFFF; --ink:#16181A; --muted:#5C6166; --line:#D8DCDF; --grid:#E2E8EC;
+  --hl:#FFE94A; --hl-ink:#16181A; --accent:#3D6E8F; --accent-soft:#E2ECF3;
+  --serif:"Noto Serif TC","Songti TC",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121416; --surface:#1A1D20; --ink:#E7E9EA; --muted:#9BA2A8; --line:#2C3136; --grid:#1D2125;
+    --hl:#E8D235; --hl-ink:#15160F; --accent:#8DB9D8; --accent-soft:#1D2A34;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121416; --surface:#1A1D20; --ink:#E7E9EA; --muted:#9BA2A8; --line:#2C3136; --grid:#1D2125;
+  --hl:#E8D235; --hl-ink:#15160F; --accent:#8DB9D8; --accent-soft:#1D2A34;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.75;padding-inline:16px;padding-block:40px 64px;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:32px 32px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+a{color:inherit}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;margin:0;line-height:1.35}
+h1{font-size:clamp(2rem,6vw,2.9rem);font-weight:900}
+h2{font-size:1.6rem;font-weight:900}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0}
+.eyebrow{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+mark{background:var(--hl);color:var(--hl-ink);padding:0 .15em;border-radius:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+header{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:1.1rem;color:var(--muted);max-width:60ch}
+.lede strong{color:var(--ink)}
+
+.map{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.map div{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;gap:4px}
+.map b{font-family:var(--serif);font-size:1.05rem}
+.map span{font-family:var(--mono);font-size:.75rem;color:var(--accent)}
+.map p{color:var(--muted);font-size:.9rem;line-height:1.6}
+
+section{display:flex;flex-direction:column;gap:20px}
+.q{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.q li{display:flex;flex-direction:column;gap:10px;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.q h3 mark{font-weight:900}
+.q p{color:var(--muted);font-size:.95rem}
+.q .try{font-size:.9rem;color:var(--ink);border-top:1px dashed var(--line);padding-top:10px}
+.q .try::before{content:"試寫 ";font-family:var(--mono);font-size:.72rem;color:var(--accent);letter-spacing:.05em}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:540px;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-weight:500;font-size:.75rem;color:var(--muted);letter-spacing:.05em}
+td:first-child{font-weight:700;white-space:nowrap}
+
+.actions{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:act}
+.actions li{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.actions li::before{counter-increment:act;content:counter(act);grid-row:1/span 3;font-family:var(--serif);font-weight:900;font-size:1.6rem;line-height:1;color:var(--ink);background:var(--hl);color:var(--hl-ink);padding:4px 10px;border-radius:4px;align-self:start}
+.actions .when{font-family:var(--mono);font-size:.75rem;color:var(--accent)}
+.actions p{color:var(--muted);font-size:.95rem}
+.actions p b{color:var(--ink)}
+
+.callout{padding:20px;border-radius:10px;background:var(--accent-soft);display:flex;flex-direction:column;gap:8px}
+.callout h3{color:var(--accent)}
+.note{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+
+@media (max-width:560px){ .map{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<article>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">圖文重點整理 · 7 張卡片 · 約 5 分鐘讀完</span>
+  <h1>理想人生不用想很大，<br>先<mark>寫出一個普通週二</mark>。</h1>
+  <p class="lede">這組卡片用七個問題，把「我想要更好的人生」這種模糊願望，拆成可以動手的東西：<strong>一個具體的日常畫面、三個五年目標、該刪掉的、該養成的、和這週的一步。</strong>重點不在答得漂亮，而在真的寫下來。</p>
+</header>
+
+<div class="map" aria-label="七個問題的分組">
+  <div><span>Q1–Q3</span><b>想清楚</b><p>理想的日常長怎樣、哪些是真心要的、只留三件事。</p></div>
+  <div><span>Q4–Q6</span><b>拆障礙</b><p>找出限制性信念、要養的習慣、要砍掉的東西。</p></div>
+  <div><span>Q7</span><b>動起來</b><p>這週就做一件拖了很久的事。</p></div>
+</div>
+
+<section>
+  <span class="eyebrow">第一組 · 想清楚</span>
+  <h2>先看見終點，再談路線</h2>
+  <ol class="q">
+    <li><h3>1. <mark>理想人生裡，一個普通的週二長怎樣？</mark></h3>
+      <p>跳過度假和里程碑，想像平凡的一天：在哪裡醒來、時間花在哪、身邊是誰。<b>細節越多越好</b>。日常才是人生的大部分，週二比假期更能說明你真正想要什麼。</p>
+      <p class="try">早上 7 點起床、9 點前做完一段交易覆盤、下午寫一篇 Unwind、晚上用 Kobo 讀 30 分鐘。</p></li>
+    <li><h3>2. <mark>如果不需要向任何人證明，我會追求什麼？</mark></h3>
+      <p>檢查你正在努力的事：有多少是自己真心想要，有多少是想讓別人看見？假設沒人在看，留下來的才是你的。</p>
+      <p class="try">把目前的目標列出來，在每個旁邊標「自己要」或「做給人看」。</p></li>
+    <li><h3>3. <mark>五年內只能完成三件事，會是哪三件？</mark></h3>
+      <p>什麼都想做，結果就是每件都做得薄。把範圍縮到少數幾件，讓力氣集中在影響最大的地方。</p>
+      <p class="try">從 Q2 留下來的清單裡挑三個，其他的先移到「以後」。</p></li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">第二組 · 拆障礙</span>
+  <h2>擋路的多半是自己的劇本</h2>
+  <ol class="q" start="4">
+    <li><h3>4. <mark>哪些限制性信念在拖住我？</mark></h3>
+      <p>每個人都帶著幾句關於自己的定論，例如「我不會理財」「我沒創意」「我年紀太大了」。這些句子會悄悄決定你覺得什麼可能。把它們寫出來，<b>逐句質疑</b>。</p>
+      <p class="try">寫下一句信念，再寫一個反例：哪一次你其實做到了？</p></li>
+    <li><h3>5. <mark>哪些習慣會讓理想人生幾乎必然發生？</mark></h3>
+      <p>大目標靠的是持續在做的小事。想想哪些<b>每日、每週習慣</b>能把你推向 Q1 的那個週二，挑一個現在就能開始的。</p>
+      <p class="try">對照 Q3 的三件事，每件配一個每天 10 分鐘內的動作。</p></li>
+    <li><h3>6. <mark>如果有個能幹的 CEO 接管我的人生一年，第一個會砍什麼？</mark></h3>
+      <p>想像有人接手，唯一任務是讓你過得更好。對方會<b>立刻刪掉</b>你行程、習慣或承諾裡的哪一項？用旁觀者的冷靜看自己，比較容易下手。</p>
+      <p class="try">打開螢幕使用時間或行事曆，找出最佔時間又最不對應 Q3 的那一項。</p></li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">第三組 · 動起來</span>
+  <h2>這週就走第一步</h2>
+  <ol class="q" start="7">
+    <li><h3>7. <mark>這週可以做哪一件事，讓我更接近理想人生？</mark></h3>
+      <p>大改變從小決定開始。想一件你拖了很久、但做了能好幾年受益的事，<b>在這週結束前跨出第一步</b>。不用做完，只要開始。</p>
+      <p class="try">預約那個一直沒約的檢查、開那個一直想開的帳戶、寄出那封一直沒寄的信。</p></li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">七題怎麼串起來</span>
+  <h2>每一題都在餵下一題</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>問題</th><th>產出</th><th>交給誰用</th></tr></thead>
+      <tbody>
+        <tr><td>Q1 普通週二</td><td>一段具體的理想日常</td><td>Q5 習慣要對齊這個畫面</td></tr>
+        <tr><td>Q2 不必證明</td><td>過濾掉「做給人看」的目標</td><td>Q3 只從剩下的挑</td></tr>
+        <tr><td>Q3 只做三件</td><td>五年三個重點</td><td>Q5 配習慣、Q6 判斷該砍什麼</td></tr>
+        <tr><td>Q4 限制性信念</td><td>幾句被質疑過的自我設定</td><td>讓 Q3 敢選真正想要的</td></tr>
+        <tr><td>Q5 習慣</td><td>每日／每週的小動作</td><td>Q7 挑其中一個開始</td></tr>
+        <tr><td>Q6 CEO 砍什麼</td><td>一項要刪的行程或習慣</td><td>騰出時間給 Q5</td></tr>
+        <tr><td>Q7 這週一步</td><td>一個已完成的第一步</td><td>下週再回頭看 Q1</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">行動指南 · 讀完就做</span>
+  <h2>三件事，從今晚開始</h2>
+  <ol class="actions">
+    <li><h3>寫你的「普通週二」</h3><span class="when">今晚 · 15 分鐘 · 對應 Q1</span>
+      <p>用時間軸寫，從起床寫到睡前，每個小時一行。<b>具體到地點、人、在做什麼</b>，例如幾點看 N225 開盤、幾點寫 Unwind、睡前讀哪本 Kobo 的書。寫完存在 Unwind 的私人區，之後每季拿出來對照一次。</p></li>
+    <li><h3>做一次 CEO 刪減</h3><span class="when">明天 · 10 分鐘 · 對應 Q6</span>
+      <p>打開手機螢幕使用時間和這週行事曆，<b>找出最花時間、又不在你週二畫面裡的一項</b>。直接刪掉 App、退掉那個固定行程，或設一個每天上限。刪掉的時間，指定給 Q1 裡的某一個時段。</p></li>
+    <li><h3>把一句限制性信念拿出來審</h3><span class="when">本週 · 10 分鐘 · 對應 Q4</span>
+      <p>寫下最常在腦中出現的一句，例如「我做交易就是沒紀律」。在下面<b>列出三個反例</b>：哪幾次你照計畫進出場、照規則停損？反例找得到，這句話就只是假設，不是事實。</p></li>
+  </ol>
+</section>
+
+<div class="callout">
+  <h3>一句話帶走</h3>
+  <p>把理想人生寫成一個具體的普通週二，只留三件事，刪掉擋路的，這週就跨出第一步。</p>
+</div>
+
+<p class="note">來源為 7 張圖文卡片（非影片），無時間戳。卡片中未見業配或自我宣傳內容。</p>
+
+</div>
+</article>
+</body>
+</html>
