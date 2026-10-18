@@ -7,7 +7,7 @@
  * The graph shows one node in the middle with two rings of what is under it.
  * Tapping something that has sub-items makes it the new middle, and tapping
  * the middle goes back up a level; tapping a leaf opens it in the side panel, where its note, links and sub-items are
- * edited. Items with the same name under two siblings are drawn as one node
+ * edited; dragging a node onto another makes it that node's sub-item. Items with the same name under two siblings are drawn as one node
  * with two links, so overlaps show as bridges. Nodes are small point spheres
  * like the home page; a force layout spreads them out, then they barely sway.
  *
@@ -34,7 +34,7 @@
     map: null, index: new Map(), loadState: 'idle', path: ['root'], sel: null, hits: [],
     nodes: null, edges: [], byId: null, gOf: new Map(), sig: '',
     alpha: 0, alphaTarget: 0, view: { s: 1, x: 0, y: 0 },
-    hover: null, press: null, dragging: null,
+    hover: null, press: null, dragging: null, drop: null,
     raf: 0, running: false, last: 0, saveTimer: 0, ink: [242, 242, 242]
   };
 
@@ -210,6 +210,7 @@
       const p = N[i];
       for (let j = i + 1; j < N.length; j++) {
         const q = N[j];
+        if (p.fx != null || q.fx != null) continue;   // a dragged node passes over the others
         let dx = q.x - p.x, dy = q.y - p.y, d2 = dx * dx + dy * dy;
         if (d2 < 0.01) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 0.5; }
         const f = 300 * a * p.charge * q.charge / d2 / 3;
@@ -332,6 +333,12 @@
         ctx.fillRect(p.x - sz / 2, p.y - sz / 2, sz, sz);
       }
       st.hits.push({ n, x: p.x, y: p.y, r: Math.max(14, R + 8) });
+      // while dragging over a node that can take it, a dotted circle marks the drop
+      if (st.drop === n) {
+        const rr = Math.max(16, R * 1.6 + 10);
+        ctx.fillStyle = 'rgba(' + ink + ',0.9)';
+        for (let k = 0; k < 36; k++) { const a = k / 36 * Math.PI * 2 + t * 0.4; ctx.fillRect(p.x + Math.cos(a) * rr - 0.8, p.y + Math.sin(a) * rr - 0.8, 1.6, 1.6); }
+      }
 
       // label under the node
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -583,6 +590,7 @@
       pr.n.fx = (h.x - st.view.x) / st.view.s; pr.n.fy = (h.y - st.view.y) / st.view.s;
       st.alpha = Math.max(st.alpha, 0.3); st.alphaTarget = 0.3;
       st.hover = pr.n;
+      st.drop = dropTarget(pr.n, h.x, h.y);
       if (!st.running) redraw();
       return;
     }
@@ -592,11 +600,24 @@
       if (!st.running) redraw();
     }
   }
+  // the node under the pointer, other than the one being dragged, that can take it
+  function dropTarget(dragged, x, y) {
+    let best = null, bd = 1e9;
+    st.hits.forEach(h => { if (h.n === dragged) return; const d = Math.hypot(h.x - x, h.y - y); if (d < h.r + 10 && d < bd) { bd = d; best = h.n; } });
+    if (!best) return null;
+    const a = dragged.tree[0], b = best.tree[0], from = parentOf(a);
+    if (a === b || (from && from.id === b)) return null;
+    for (let x = node(b); x; x = parentOf(x.id)) if (x.id === a) return null;   // not into itself
+    return best;
+  }
   function onUp(e) {
     const pr = st.press; st.press = null;
     if (st.dragging) {
-      st.dragging.fx = st.dragging.fy = null; st.dragging = null; st.alphaTarget = 0;
+      const dragged = st.dragging, target = st.drop;
+      dragged.fx = dragged.fy = null; st.dragging = null; st.drop = null; st.alphaTarget = 0;
       if (e.pointerType !== 'mouse') st.hover = null;
+      // dropped on another node: it becomes that node's sub-item
+      if (target) moveTo(node(dragged.tree[0]), target.tree[0]);
       return;
     }
     if (!pr) return;
