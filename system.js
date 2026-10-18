@@ -5,8 +5,8 @@
  * under them, as deep as he likes. Every node can hold a note and links.
  *
  * The graph shows one node in the middle with two rings of what is under it.
- * Tapping something that has sub-items makes it the new middle; tapping a
- * leaf opens it in the side panel, where its note, links and sub-items are
+ * Tapping something that has sub-items makes it the new middle, and tapping
+ * the middle goes back up a level; tapping a leaf opens it in the side panel, where its note, links and sub-items are
  * edited. Items with the same name under two siblings are drawn as one node
  * with two links, so overlaps show as bridges. Nodes are small point spheres
  * like the home page; a force layout spreads them out, then they barely sway.
@@ -588,7 +588,7 @@
     }
     if (e.pointerType === 'mouse' && st.hover !== h.n) {
       st.hover = h.n;
-      st.cv.style.cursor = h.n ? 'pointer' : 'default';
+      st.cv.style.cursor = h.n && (h.n.kind !== 'center' || st.path.length > 1) ? 'pointer' : 'default';
       if (!st.running) redraw();
     }
   }
@@ -601,7 +601,9 @@
     }
     if (!pr) return;
     const n = pr.n;
-    if (!n || n.kind === 'center') { if (st.sel) select(null); return; }
+    if (!n) { if (st.sel) select(null); return; }
+    // the middle node takes you back up a level
+    if (n.kind === 'center') { if (st.path.length > 1) up(); else if (st.sel) select(null); return; }
     const id = n.tree.includes(st.sel) ? st.sel : n.tree[0];
     if (!node(id).children.length && id === st.sel) select(null);
     else open(id);
