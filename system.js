@@ -4,7 +4,8 @@
  * The map is a tree: Charles at the root, his systems under him, their items
  * under them, as deep as he likes. Every node can hold a note and links.
  *
- * The graph shows one node in the middle with two rings of what is under it.
+ * The graph shows one node in the middle with two rings of what is under it
+ * (only one ring at the top, so Charles's view stays uncluttered).
  * Tapping something that has sub-items makes it the new middle, and tapping
  * the middle goes back up a level; tapping a leaf opens it in the side panel, where its note, links and sub-items are
  * edited; dragging a node onto another makes it that node's sub-item. Items with the same name under two siblings are drawn as one node
@@ -179,7 +180,8 @@
       edges.push({ a: c, b: cn, len: 150, k: 0.7 });
     });
     const byName = new Map();
-    kids.forEach(ch => {
+    // at the top only the systems show; their items wait until you go in
+    if (focus.id !== 'root') kids.forEach(ch => {
       const cn = gOf.get(ch.id);
       ch.children.forEach(g => {
         const key = norm(g.name); if (!key) return;
@@ -277,7 +279,7 @@
     const pad = st.wide ? 64 : 24, inset = sideOpen() ? SIDE_W + 48 : 0;
     const availW = st.W - pad * 2 - inset;
     // a small graph should not be blown up to fill the frame
-    const cap = Math.min(st.wide ? 2.4 : 1.25, 1 + st.nodes.length / 14);
+    const cap = Math.min(st.wide ? 2.4 : 1.25, 1.2 + st.nodes.length / 10);
     const s = Math.min(cap, availW / (x1 - x0), (st.H - 24) / (y1 - y0));
     const tx = pad + availW / 2 - (x0 + x1) / 2 * s, ty = st.H / 2 - (y0 + y1) / 2 * s;
     const v = st.view, k = instant ? 1 : 0.06;
