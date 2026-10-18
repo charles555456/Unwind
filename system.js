@@ -49,12 +49,12 @@
     return pts;
   }
   // each level of the tree has its own figure, all made of the same points:
-  // 0 a dense sphere, 1 a sphere with a ring, 2 a globe of latitude lines, 3+ a small spiral disk
-  function ring(n, r) {
+  // 0 a dense sphere, 1 a globe of meridians, 2 a globe of latitude lines, 3+ a small spiral disk
+  function meridians(k, per) {
     const pts = [];
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, rr = r * (0.97 + Math.random() * 0.06);
-      pts.push([Math.cos(a) * rr, (Math.random() - 0.5) * 0.04, Math.sin(a) * rr]);
+    for (let m = 0; m < k; m++) {
+      const lon = m / k * Math.PI;
+      for (let i = 0; i < per; i++) { const a = i / per * Math.PI * 2; pts.push([Math.cos(a) * Math.cos(lon), Math.sin(a), Math.cos(a) * Math.sin(lon)]); }
     }
     return pts;
   }
@@ -74,8 +74,8 @@
     }
     return pts;
   }
-  const LOOK = [sphere(260), sphere(80).concat(ring(130, 1.7)), bands(5, 26), disk(110)];
-  const LOOK_SMALL = [sphere(40), sphere(24).concat(ring(34, 1.7)), bands(3, 12), disk(40)];
+  const LOOK = [sphere(260), meridians(6, 36), bands(5, 26), disk(110)];
+  const LOOK_SMALL = [sphere(40), meridians(4, 14), bands(3, 12), disk(40)];
   const look = (d, small) => (small ? LOOK_SMALL : LOOK)[Math.min(d || 0, 3)];
 
   const TILT = 0.42, CT = Math.cos(TILT), STL = Math.sin(TILT);
@@ -84,9 +84,9 @@
     const ink = st.ink;
     for (const p of pts) {
       const x = p[0] * c + p[2] * s, z0 = -p[0] * s + p[2] * c;
-      // tipped toward the viewer so rings and disks read as ellipses
+      // tipped toward the viewer so lines and disks read in depth
       const y = p[1] * CT - z0 * STL, z = p[1] * STL + z0 * CT;
-      const depth = Math.max(0, Math.min(1, (z / 1.75 + 1) / 2));
+      const depth = Math.max(0, Math.min(1, (z + 1) / 2));
       const a = (0.25 + 0.75 * depth) * alpha;
       if (a < 0.02) continue;
       ctx.fillStyle = 'rgba(' + ink[0] + ',' + ink[1] + ',' + ink[2] + ',' + a.toFixed(3) + ')';
