@@ -48,19 +48,50 @@
     }
     return pts;
   }
-  const CENTER_PTS = sphere(260), SAT_PTS = sphere(120), SMALL_PTS = sphere(40);
+  // each level of the tree has its own figure, all made of the same points:
+  // 0 a dense sphere, 1 a sphere with a ring, 2 a globe of latitude lines, 3+ a small spiral disk
+  function ring(n, r) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, rr = r * (0.97 + Math.random() * 0.06);
+      pts.push([Math.cos(a) * rr, (Math.random() - 0.5) * 0.04, Math.sin(a) * rr]);
+    }
+    return pts;
+  }
+  function bands(k, per) {
+    const pts = [];
+    for (let b = 1; b <= k; b++) {
+      const lat = -Math.PI / 2 + Math.PI * b / (k + 1), r = Math.cos(lat), m = Math.max(6, Math.round(per * r));
+      for (let i = 0; i < m; i++) { const a = (i + Math.random() * 0.3) / m * Math.PI * 2; pts.push([Math.cos(a) * r, Math.sin(lat), Math.sin(a) * r]); }
+    }
+    return pts;
+  }
+  function disk(n) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const t = Math.sqrt(Math.random()), arm = i % 2 ? Math.PI : 0, a = arm + t * 4.2 + (Math.random() - 0.5) * 0.5;
+      pts.push([Math.cos(a) * t, (Math.random() - 0.5) * 0.08 * (1 - t), Math.sin(a) * t]);
+    }
+    return pts;
+  }
+  const LOOK = [sphere(260), sphere(80).concat(ring(130, 1.7)), bands(5, 26), disk(110)];
+  const LOOK_SMALL = [sphere(40), sphere(24).concat(ring(34, 1.7)), bands(3, 12), disk(40)];
+  const look = (d, small) => (small ? LOOK_SMALL : LOOK)[Math.min(d || 0, 3)];
 
+  const TILT = 0.42, CT = Math.cos(TILT), STL = Math.sin(TILT);
   function drawSphere(ctx, pts, cx, cy, R, t, alpha) {
     const rot = reduce ? 0.5 : t * 0.6, c = Math.cos(rot), s = Math.sin(rot);
     const ink = st.ink;
     for (const p of pts) {
-      const x = p[0] * c + p[2] * s, z = -p[0] * s + p[2] * c;
-      const depth = (z + 1) / 2;
+      const x = p[0] * c + p[2] * s, z0 = -p[0] * s + p[2] * c;
+      // tipped toward the viewer so rings and disks read as ellipses
+      const y = p[1] * CT - z0 * STL, z = p[1] * STL + z0 * CT;
+      const depth = Math.max(0, Math.min(1, (z / 1.75 + 1) / 2));
       const a = (0.25 + 0.75 * depth) * alpha;
       if (a < 0.02) continue;
       ctx.fillStyle = 'rgba(' + ink[0] + ',' + ink[1] + ',' + ink[2] + ',' + a.toFixed(3) + ')';
       const sz = 0.7 + 0.8 * depth;
-      ctx.fillRect(cx + x * R, cy + p[1] * R, sz, sz);
+      ctx.fillRect(cx + x * R, cy + y * R, sz, sz);
     }
   }
 
@@ -90,8 +121,9 @@
     st.index = new Map();
     const walk = (n, parent, depth) => { st.index.set(n.id, { node: n, parent, depth }); n.children.forEach(c => walk(c, n, depth + 1)); };
     if (st.map) walk(st.map.root, null, 0);
-    st.path = st.path.filter(id => st.index.has(id));
-    if (!st.path.length) st.path = ['root'];
+    // the node in the middle may have been moved: rebuild the way to it
+    const keep = st.path.filter(id => st.index.has(id)).pop();
+    st.path = keep ? pathTo(keep) : ['root'];
     if (st.sel && !st.index.has(st.sel)) st.sel = null;
   }
   const node = id => { const e = st.index.get(id); return e ? e.node : null; };
@@ -134,6 +166,7 @@
       if (!n.tree.includes(tn.id)) n.tree.push(tn.id);
       n.full = n.tree.some(t => hasContent(node(t)));
       n.kids = n.tree.reduce((k, t) => k + node(t).children.length, 0);
+      n.depth = st.index.get(n.tree[0]).depth;
       gOf.set(tn.id, n);
       return n;
     };
@@ -289,9 +322,9 @@
       const p = P.get(n), on = lit(n), sel = focus === n;
       const dim = on ? 1 : 0.22;
       let R = n.r * vs * (sel ? 1.25 : 1);
-      if (n.kind === 'center') drawSphere(ctx, CENTER_PTS, p.x, p.y, R, t * 0.5, dim);
-      else if (n.kind === 'child') drawSphere(ctx, SAT_PTS, p.x, p.y, R, t, (n.full || n.kids ? 0.9 : 0.6) * dim);
-      else if (n.kids) { R = 4.2 * vs; drawSphere(ctx, SMALL_PTS, p.x, p.y, R, t + n.ph, 0.85 * dim); }
+      if (n.kind === 'center') drawSphere(ctx, look(n.depth), p.x, p.y, R, t * 0.5, dim);
+      else if (n.kind === 'child') drawSphere(ctx, look(n.depth), p.x, p.y, R, t, (n.full || n.kids ? 0.9 : 0.6) * dim);
+      else if (n.kids) { R = 4.2 * vs; drawSphere(ctx, look(n.depth, true), p.x, p.y, R, t + n.ph, 0.85 * dim); }
       else {
         // a leaf is a single point: brighter when it holds a note or links, larger when shared
         const sz = ((n.tree.length > 1 ? 3.4 : 2.6) + (n.full ? 0.6 : 0)) * vs * (sel ? 1.3 : 1);
@@ -487,10 +520,33 @@
       </div>
       ${siblings.length ? `<p class="sys-label">和這些有關</p>
       <div class="sys-chips">${siblings.map(o => `<button class="review-tab ${linked(o.id) ? 'active' : ''}" data-sys-link="${esc(o.id)}">${esc(o.name)}</button>`).join('')}</div>` : ''}
-      ${isRoot ? '' : '<div class="sys-row sys-danger"><button class="x-btn small danger" data-sys="del-node">刪除這個項目</button></div>'}
+      ${isRoot ? '' : `<p class="sys-label"><label for="sysMove">移到</label></p>
+      <select class="sys-input sys-select" id="sysMove">
+        <option value="">放到另一個項目底下…</option>
+        ${moveTargets(n).map(o => `<option value="${esc(o.id)}">${'\u3000'.repeat(o.depth)}${esc(o.name)}</option>`).join('')}
+      </select>
+      <div class="sys-row sys-danger"><button class="x-btn small danger" data-sys="del-node">刪除這個項目</button></div>`}
       <p class="sys-status" id="sysStatus"></p>`;
     st.statusEl = P.querySelector('#sysStatus');
     grow(P.querySelector('#sysNote'));
+  }
+  // anywhere except inside itself or where it already is
+  function moveTargets(n) {
+    const out = [], parent = parentOf(n.id);
+    (function walk(x, d) {
+      if (x.id === n.id) return;
+      if (!parent || x.id !== parent.id) out.push({ id: x.id, name: x.name, depth: d });
+      x.children.forEach(c => walk(c, d + 1));
+    })(st.map.root, 0);
+    return out;
+  }
+  function moveTo(n, targetId) {
+    const from = parentOf(n.id), to = node(targetId);
+    if (!from || !to || to.id === n.id) return;
+    from.children = from.children.filter(c => c.id !== n.id);
+    to.children.push(n);
+    save(); renderCrumbs(); renderPanel();
+    status('已移到「' + to.name + '」底下');
   }
   function grow(ta) { if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(360, ta.scrollHeight + 2) + 'px'; } }
   const current = () => node(st.sel || focusId());
@@ -596,6 +652,7 @@
   document.addEventListener('change', e => {
     const t = e.target;
     if (!st.panel || !st.panel.contains(t) || !st.map) return;
+    if (t.id === 'sysMove' && t.value) { const n = current(); if (n) moveTo(n, t.value); return; }
     if (t.id === 'sysName') { const n = current(); if (n) { n.name = t.value.trim() || n.name; t.value = n.name; save(); renderCrumbs(); } }
   });
 

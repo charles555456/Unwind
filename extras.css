@@ -262,6 +262,7 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 .sys-links a span { color: var(--text-tertiary); }
 .sys-del { flex: none; background: none; border: none; padding: 2px 6px; font-size: 16px; color: var(--text-tertiary); cursor: pointer; }
 .sys-del:hover { color: #e5786d; }
+.sys-select { width: 100%; font-size: 14px; background: var(--bg); cursor: pointer; }
 /* on a computer the panel floats at the right of the full-width graph */
 @media (min-width: 900px) {
   .sys-panel.side {
