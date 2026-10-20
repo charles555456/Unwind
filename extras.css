@@ -205,6 +205,14 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
   font-size: 1.14em; letter-spacing: -0.005em;
 }
 
+/* Home rings (page-art.js) */
+.home-rings {
+  position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1;
+  pointer-events: none; overflow: hidden; color: var(--text-primary); opacity: 0; transition: opacity 0.6s ease;
+}
+.home-rings.on { opacity: 1; }
+.home-rings circle { fill: none; stroke: currentColor; stroke-opacity: 0.14; stroke-width: 1; }
+
 /* Stream backdrop (page-art.js) */
 .stream-art {
   position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1;

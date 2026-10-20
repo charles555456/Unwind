@@ -8,6 +8,9 @@
  * Stream   — on wide screens, a few faint words from the Stream posts drift
  *            slowly upward in the side margins, outside the reading column.
  *
+ * Home     — three thin concentric rings around the dot sphere, drawn
+ *            underneath it, shown only on the home page.
+ *
  * Each scene runs only while its page is open, and holds still under
  * prefers-reduced-motion.
  */
@@ -188,17 +191,49 @@
     if (strm.cv) strm.cv.classList.remove('on');
   }
 
+  // ════════════════════════════════════════════════════════
+  //  HOME — thin concentric rings around the dot sphere
+  // ════════════════════════════════════════════════════════
+  // Centred where the sphere in index.html is drawn (same formulas), under it.
+  const RINGS = [1.8, 2.6, 3.6];             // radii, in sphere radii
+  const home = { svg: null };
+  function homeLayout() {
+    const svg = home.svg, r = svg.getBoundingClientRect();
+    const W = Math.round(r.width) || window.innerWidth, H = Math.round(r.height) || window.innerHeight;
+    const mobile = W < 640;
+    const R = mobile ? Math.min(W * 0.27, H * 0.115) : Math.min(W * 0.18, H * 0.24, 290);
+    const cx = mobile ? W * 0.5 : W * 0.74, cy = mobile ? H * 0.27 : H * 0.42;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.querySelectorAll('circle').forEach((c, i) => {
+      c.setAttribute('cx', cx.toFixed(1)); c.setAttribute('cy', cy.toFixed(1)); c.setAttribute('r', (R * RINGS[i]).toFixed(1));
+    });
+  }
+  function homeBuild() {
+    if (home.svg) return;
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'home-rings'); svg.setAttribute('aria-hidden', 'true');
+    RINGS.forEach(() => svg.appendChild(document.createElementNS(NS, 'circle')));
+    const bg = document.getElementById('bgCanvas');
+    document.body.insertBefore(svg, bg || document.body.firstChild);
+    home.svg = svg;
+    homeLayout();
+  }
+
   // ── wiring ──
   function sync() {
+    if (home.svg) home.svg.classList.toggle('on', isOn('home'));
     if (isOn('projects')) projStart(); else projStop();
     if (isOn('stream')) strmStart(); else strmStop();
   }
 
   function init() {
+    homeBuild();
     projBuild();
     const baseNavigate = window.navigate;
     window.navigate = function (page) { baseNavigate(page); sync(); };
     window.addEventListener('resize', () => {
+      if (home.svg) homeLayout();
       if (proj.scene) {
         const s = projSize();
         if (s.w !== proj.scene.size[0]) { proj.layout = s; proj.scene.resize(s.w, s.h); if (reduce) proj.scene.draw(); }
