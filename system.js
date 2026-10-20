@@ -8,7 +8,8 @@
  * (only one ring at the top, so Charles's view stays uncluttered).
  * Tapping something that has sub-items makes it the new middle, and tapping
  * the middle goes back up a level; tapping a leaf opens it in the side panel, where its note, links and sub-items are
- * edited; dragging a node onto another makes it that node's sub-item. Items with the same name under two siblings are drawn as one node
+ * edited (a leaf that holds a link opens the link instead, marked ↗);
+ * dragging a node onto another makes it that node's sub-item. Items with the same name under two siblings are drawn as one node
  * with two links, so overlaps show as bridges. Nodes are small point spheres
  * like the home page; a force layout spreads them out, then they barely sway.
  *
@@ -168,6 +169,9 @@
       n.full = n.tree.some(t => hasContent(node(t)));
       n.kids = n.tree.reduce((k, t) => k + node(t).children.length, 0);
       n.depth = st.index.get(n.tree[0]).depth;
+      // a node with no sub-items but a link opens that link when tapped
+      const withLink = n.tree.map(node).find(x => !x.children.length && x.links.length);
+      n.link = kind !== 'center' && withLink ? withLink.links[0].url : '';
       gOf.set(tn.id, n);
       return n;
     };
@@ -350,6 +354,11 @@
       const tw = ctx.measureText(n.label).width;
       const lx = Math.max(4 + tw / 2, Math.min(st.W - 4 - tw / 2, p.x));
       ctx.fillText(n.label, lx, p.y + R + 5);
+      if (n.link) {
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(' + ink + ',' + (0.55 * dim).toFixed(3) + ')';
+        ctx.fillText('↗', lx + tw / 2 + 4, p.y + R + 5);
+      }
     }
   }
 
@@ -599,6 +608,7 @@
     if (e.pointerType === 'mouse' && st.hover !== h.n) {
       st.hover = h.n;
       st.cv.style.cursor = h.n && (h.n.kind !== 'center' || st.path.length > 1) ? 'pointer' : 'default';
+      st.cv.title = h.n && h.n.link ? h.n.link : '';
       if (!st.running) redraw();
     }
   }
@@ -628,6 +638,11 @@
     // the middle node takes you back up a level
     if (n.kind === 'center') { if (st.path.length > 1) up(); else if (st.sel) select(null); return; }
     const id = n.tree.includes(st.sel) ? st.sel : n.tree[0];
+    if (n.link && !node(id).children.length) {
+      window.open(n.link, '_blank', 'noopener,noreferrer');
+      if (id !== st.sel) select(id);
+      return;
+    }
     if (!node(id).children.length && id === st.sel) select(null);
     else open(id);
   }
