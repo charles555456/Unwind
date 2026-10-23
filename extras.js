@@ -431,6 +431,8 @@
       <div class="x-row">
         <span class="fx-host x-input-host" data-fx-beam="line" data-fx-beam-strength="0.7"><input class="x-input" id="laterUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" placeholder="貼上文章網址"></span>
         <button class="x-btn primary" id="laterSave">儲存</button>
+        <button class="x-btn" id="laterImport" title="匯入電腦裡的 HTML 檔，只存進私人資料庫">匯入檔案</button>
+        <input type="file" id="laterFile" accept=".html,.htm,text/html" hidden>
       </div>
       <div class="x-status ${later.status ? later.status.kind : ''}" id="laterStatus">${statusHtml(later.status)}</div>
       <div class="x-tabs">
@@ -439,6 +441,40 @@
         <button class="review-tab ${later.tab === 'archived' ? 'active' : ''}" data-later-tab="archived">封存 ${archived.length || ''}</button>
       </div>
       <div>${inner}</div>`;
+  }
+
+  // Import a local HTML file: parsed in the browser, stored only in the private DB.
+  async function importArticleFile(file) {
+    if (!file || later.busy) return;
+    later.busy = true;
+    laterStatus('讀取檔案中', '', 'searching');
+    try {
+      const html = await file.text();
+      await Promise.all([loadScript(READABILITY_SRC), loadScript(PURIFY_SRC)]);
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      qa('script', doc).forEach(s => s.remove());
+      const art = new window.Readability(doc).parse();
+      if (!art || !art.content || (art.textContent || '').trim().length < 80) {
+        throw new Error('檔案裡找不到正文');
+      }
+      const title = (art.title || doc.title || file.name.replace(/\.html?$/i, '')).trim();
+      await rpc('add_article', {
+        p_url: 'file:' + file.name,
+        p_title: title.slice(0, 300),
+        p_site: '本機檔案',
+        p_author: (art.byline || '').trim().slice(0, 120),
+        p_excerpt: (art.excerpt || art.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 280),
+        p_content: sanitize(art.content)
+      });
+      later.tab = 'unread';
+      laterStatus('已匯入：' + title, 'ok');
+      await renderLater();
+    } catch (err) {
+      if (err instanceof NeedsMigration) { q('#laterBody').innerHTML = migrationHtml(); }
+      else laterStatus('匯入失敗：' + err.message, 'err');
+    } finally {
+      later.busy = false;
+    }
   }
 
   async function saveArticle(raw) {
@@ -513,7 +549,7 @@
 
   function renderReader() {
     const a = later.current, body = q('#laterBody');
-    const isMail = /^newsletter:/.test(a.url);
+    const isMail = /^(newsletter|file):/.test(a.url);
     q('#laterSubtitle').textContent = a.site || hostOf(a.url) || '稍後閱讀';
     body.innerHTML = `
       <button class="reader-back" data-later-back>← 返回列表</button>
@@ -898,6 +934,7 @@
 
     // Read Later
     if (t.closest('#laterSave')) { saveArticle(q('#laterUrl').value); return; }
+    if (t.closest('#laterImport')) { const f = q('#laterFile'); if (f) { f.value = ''; f.click(); } return; }
     const lt = t.closest('[data-later-tab]');
     if (lt) { later.tab = lt.dataset.laterTab; drawLaterList(); return; }
     const lo = t.closest('[data-later-open]');
@@ -1000,6 +1037,10 @@
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || e.isComposing) return;
     if (e.target && e.target.id === 'laterUrl') { e.preventDefault(); saveArticle(e.target.value); }
+  });
+
+  document.addEventListener('change', e => {
+    if (e.target && e.target.id === 'laterFile' && e.target.files[0]) importArticleFile(e.target.files[0]);
   });
 
   // ─────────────────────────────────────────────────────────
