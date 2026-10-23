@@ -639,6 +639,10 @@
     if (n.kind === 'center') { if (st.path.length > 1) up(); else if (st.sel) select(null); return; }
     const id = n.tree.includes(st.sel) ? st.sel : n.tree[0];
     if (n.link && !node(id).children.length) {
+      // a link to a page of this site (e.g. /#later) switches page here, still unlocked
+      let u = null; try { u = new URL(n.link, location.href); } catch (err) {}
+      const page = u && u.origin === location.origin && u.hash.slice(1);
+      if (page && document.getElementById('page-' + page) && typeof window.navigate === 'function') { window.navigate(page); return; }
       window.open(n.link, '_blank', 'noopener,noreferrer');
       if (id !== st.sel) select(id);
       return;
