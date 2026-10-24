@@ -443,6 +443,20 @@
       <div>${inner}</div>`;
   }
 
+  const FULL_PAGE_MARK = '<!--full-page-->';
+
+  // Whole-document sanitize for imported pages: keeps <style>, fonts and layout, drops scripts and embeds.
+  function sanitizePage(html) {
+    return window.DOMPurify.sanitize(html, {
+      WHOLE_DOCUMENT: true,
+      ADD_TAGS: ['style', 'link'],
+      ADD_ATTR: ['rel', 'crossorigin'],
+      FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'base', 'meta'],
+      FORBID_ATTR: ['onerror', 'onload'],
+      ALLOW_DATA_ATTR: false
+    });
+  }
+
   // Import a local HTML file: parsed in the browser, stored only in the private DB.
   async function importArticleFile(file) {
     if (!file || later.busy) return;
@@ -464,7 +478,8 @@
         p_site: '本機檔案',
         p_author: (art.byline || '').trim().slice(0, 120),
         p_excerpt: (art.excerpt || art.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 280),
-        p_content: sanitize(art.content)
+        // Keep the file's own layout; it is shown in a script-less sandboxed frame.
+        p_content: FULL_PAGE_MARK + sanitizePage(html)
       });
       later.tab = 'unread';
       laterStatus('已匯入：' + title, 'ok');
@@ -550,6 +565,7 @@
   function renderReader() {
     const a = later.current, body = q('#laterBody');
     const isMail = /^(newsletter|file):/.test(a.url);
+    const isFullPage = /^file:/.test(a.url) && (a.content || '').startsWith(FULL_PAGE_MARK);
     q('#laterSubtitle').textContent = a.site || hostOf(a.url) || '稍後閱讀';
     body.innerHTML = `
       <button class="reader-back" data-later-back>← 返回列表</button>
@@ -563,8 +579,22 @@
         <button class="x-btn small" data-later-archive="${a.archived ? '0' : '1'}">${a.archived ? '移回待讀' : '封存'}</button>
         <button class="x-btn small danger" data-later-del>刪除</button>
       </div>
-      <div class="reader-content" id="readerContent">${sanitize(a.content)}</div>
+      ${isFullPage ? '<iframe class="mail-frame file-frame" id="fileFrame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="匯入的頁面"></iframe>'
+        : `<div class="reader-content" id="readerContent">${sanitize(a.content)}</div>`}
       <div class="reader-hl-section" id="readerHl"></div>`;
+    if (isFullPage) {
+      // Sandboxed without allow-scripts: the page keeps its styling and cannot run code.
+      const frame = q('#fileFrame');
+      frame.srcdoc = sanitizePage(a.content.slice(FULL_PAGE_MARK.length));
+      const fit = () => {
+        try {
+          const d = frame.contentDocument;
+          if (d && d.body) frame.style.height = Math.max(320, d.documentElement.scrollHeight, d.body.scrollHeight) + 'px';
+        } catch (e) {}
+      };
+      frame.addEventListener('load', () => { fit(); setTimeout(fit, 600); setTimeout(fit, 2500); });
+      return;
+    }
     drawReaderHighlights();
   }
 
