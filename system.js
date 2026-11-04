@@ -106,7 +106,10 @@
       name: String(o.name || ''),
       note: String(o.note || ''),
       links: (o.links || []).filter(l => l && isUrl(l.url)).map(l => ({ url: String(l.url), title: String(l.title || '') })),
-      children: (o.children || o.items || []).map(c => normNode(c))
+      children: (o.children || o.items || []).map(c => normNode(c)),
+      // reading: a question carries its status, a book its Kobo id
+      q: ['active', 'queued', 'done'].includes(o.q) ? o.q : undefined,
+      book: o.book ? String(o.book) : undefined
     };
   }
   const cleanLinks = ls => (ls || []).filter(l => Array.isArray(l) && l.length === 2).map(l => [String(l[0]), String(l[1])]);
@@ -442,6 +445,7 @@
 
   function save() {
     changed();
+    document.dispatchEvent(new CustomEvent('unwind:system'));
     clearTimeout(st.saveTimer);
     status('儲存中…');
     st.saveTimer = setTimeout(async () => {
@@ -477,6 +481,79 @@
       return last ? host + ' / ' + (last.length > 40 ? last.slice(0, 40) + '…' : last) : host;
     } catch (e) { return l.url; }
   }
+
+  // ── reading: one question at a time, three books for it ──
+  // 學習系統 › 閱讀 › questions (q: active | queued | done) › books (book: Kobo id)
+  const READING_ID = 'reading', MAX_BOOKS = 3;
+  const QL = { active: '進行中', queued: '排隊', done: '完成' };
+  const bookKids = q => q.children.filter(c => c.book);
+  const libBook = id => (typeof LIBRARY !== 'undefined' && Array.isArray(LIBRARY) ? LIBRARY.find(b => b.id === id) : null);
+  const shortTitle = t => String(t || '').split(/[：:｜|【(（]/)[0].trim() || String(t || '');
+  function readingNode(create) {
+    let r = node(READING_ID);
+    if (r || !create) return r;
+    if (!st.map) { st.map = normalise({ center: 'Charles', systems: [] }); st.loadState = 'ready'; reindex(); }
+    r = { id: READING_ID, name: '閱讀', note: '', links: [], children: [] };
+    (node('learn') || st.map.root).children.push(r);
+    reindex();
+    return r;
+  }
+  function activeQ() { const r = readingNode(false); return r ? r.children.find(c => c.q === 'active') || null : null; }
+  function setQ(q, status) {
+    if (status === 'active') (parentOf(q.id) || { children: [] }).children.forEach(c => { if (c.q === 'active') c.q = 'queued'; });
+    q.q = status;
+  }
+  function questionBlock(q) {
+    const books = bookKids(q);
+    return `<div class="sys-chips sys-q">${['active', 'queued', 'done'].map(k =>
+        `<button class="review-tab ${q.q === k ? 'active' : ''}" data-sys-q="${k}">${QL[k]}</button>`).join('')}</div>
+      <p class="sys-label">書（${books.length} / ${MAX_BOOKS}）</p>
+      ${books.length ? `<ul class="sys-list">${books.map(b => {
+        const lb = libBook(b.book), pct = lb ? (lb.readStatus === 2 ? '讀完' : (lb.percentRead || 0) + '%') : '';
+        return `<li><button class="sys-link" data-sys-open="${esc(b.id)}">${esc(b.name)}</button><span class="sys-count">${pct}</span>
+          <button class="sys-del" data-sys-unbook="${esc(b.id)}" aria-label="從這個問題拿掉 ${esc(b.name)}">×</button></li>`;
+      }).join('')}</ul>` : ''}
+      ${books.length < MAX_BOOKS ? `<button class="x-btn small" data-x-goto="reading">到書架挑書 →</button>` : ''}`;
+  }
+  function bookBlock(b) {
+    const lb = libBook(b.book);
+    const meta = lb ? [lb.author, lb.readStatus === 2 ? '讀完' : lb.readStatus === 1 ? '在讀 ' + (lb.percentRead || 0) + '%' : '還沒讀', lb.highlights.length + ' 條劃線'].filter(Boolean).join(' · ') : '';
+    return `${meta ? `<p class="sys-note">${esc(meta)}</p>` : ''}<button class="x-btn small" data-sys-shelf="${esc(b.book)}">在書架打開 →</button>`;
+  }
+
+  // what the shelf on the Reading page uses
+  window.UnwindSystem = {
+    async ensure() {
+      if (!unlocked()) return false;
+      if (st.loadState === 'idle') await load();
+      return st.loadState === 'ready' || st.loadState === 'empty';
+    },
+    active() {
+      const q = activeQ();
+      return q ? { id: q.id, name: q.name, books: bookKids(q).map(b => ({ id: b.id, book: b.book, name: b.name })) } : null;
+    },
+    startQuestion(text) {
+      text = String(text || '').trim(); if (!text) return null;
+      const r = readingNode(true);
+      const q = { id: uid(), name: text.slice(0, 120), note: '', links: [], children: [], q: 'queued' };
+      r.children.push(q); reindex(); setQ(q, 'active');
+      save(); if (onPage()) { renderCrumbs(); renderPanel(); }
+      return q.id;
+    },
+    addBook(book) {
+      const q = activeQ(); if (!q) return 'none';
+      if (bookKids(q).some(b => b.book === book.id)) return 'exists';
+      if (bookKids(q).length >= MAX_BOOKS) return 'full';
+      q.children.push({ id: uid(), name: shortTitle(book.title), note: '', links: [], children: [], book: book.id });
+      save(); if (onPage()) renderPanel();
+      return 'ok';
+    },
+    removeBook(bookId) {
+      const q = activeQ(); if (!q) return;
+      q.children = q.children.filter(c => c.book !== bookId);
+      save(); if (onPage()) renderPanel();
+    }
+  };
 
   // ── where you are ──
   function renderCrumbs() {
@@ -514,12 +591,14 @@
     const isRoot = id === 'root', isMiddle = id === focusId();
     const siblings = parent ? parent.children.filter(s => s.id !== id) : [];
     const linked = sid => st.map.links.some(([a, b]) => (a === id && b === sid) || (b === id && a === sid));
-    const meta = c => [c.children.length ? c.children.length : '', hasContent(c) ? '•' : ''].filter(Boolean).join(' ');
+    const meta = c => [c.q ? QL[c.q] : '', c.q ? bookKids(c).length + ' / ' + MAX_BOOKS : (c.children.length ? c.children.length : ''), hasContent(c) ? '•' : ''].filter(Boolean).join(' · ');
+    const kids = n.q ? n.children.filter(c => !c.book) : n.children;
     P.innerHTML = `
       <div class="sys-p-head">
         <input class="sys-input sys-title" id="sysName" value="${esc(n.name)}" maxlength="60" aria-label="名稱">
         ${isMiddle ? (st.path.length > 1 ? '<button class="sys-x" data-sys="up" aria-label="回上一層" title="回上一層">↑</button>' : '') : '<button class="sys-x" data-sys="close" aria-label="關閉" title="關閉">×</button>'}
       </div>
+      ${n.q ? questionBlock(n) : ''}${n.book ? bookBlock(n) : ''}
       <textarea class="sys-text" id="sysNote" rows="3" placeholder="寫點什麼…" aria-label="筆記">${esc(n.note)}</textarea>
       <p class="sys-label">連結</p>
       ${n.links.length ? `<ul class="sys-links">${n.links.map((l, i) => `<li>
@@ -530,10 +609,10 @@
         <input class="sys-input" id="sysNewLink" placeholder="貼上連結（前面可加標題）" inputmode="url" autocomplete="off">
         <button class="x-btn small" data-sys="add-link">加入</button>
       </div>
-      <p class="sys-label">子項目</p>
-      ${n.children.length ? `<ul class="sys-list">${n.children.map(c => `<li><button class="sys-link" data-sys-open="${esc(c.id)}">${esc(c.name)}</button><span class="sys-count">${meta(c)}</span></li>`).join('')}</ul>` : ''}
+      <p class="sys-label">${n.id === READING_ID ? '問題（一次只有一個進行中）' : '子項目'}</p>
+      ${kids.length ? `<ul class="sys-list">${kids.map(c => `<li><button class="sys-link" data-sys-open="${esc(c.id)}">${esc(c.name)}</button><span class="sys-count">${meta(c)}</span></li>`).join('')}</ul>` : ''}
       <div class="sys-row">
-        <input class="sys-input" id="sysNewChild" placeholder="新增子項目" maxlength="60" autocomplete="off">
+        <input class="sys-input" id="sysNewChild" placeholder="${n.id === READING_ID ? '新增一個問題' : '新增子項目'}" maxlength="${n.id === READING_ID ? 120 : 60}" autocomplete="off">
         <button class="x-btn small" data-sys="add-child">新增</button>
       </div>
       ${siblings.length ? `<p class="sys-label">和這些有關</p>
@@ -561,6 +640,7 @@
   function moveTo(n, targetId) {
     const from = parentOf(n.id), to = node(targetId);
     if (!from || !to || to.id === n.id) return;
+    if (n.book && to.q && bookKids(to).length >= MAX_BOOKS) { status('「' + to.name + '」已經有 ' + MAX_BOOKS + ' 本書了，先拿掉一本', true); return; }
     from.children = from.children.filter(c => c.id !== n.id);
     to.children.push(n);
     save(); renderCrumbs(); renderPanel();
@@ -620,6 +700,7 @@
     const a = dragged.tree[0], b = best.tree[0], from = parentOf(a);
     if (a === b || (from && from.id === b)) return null;
     for (let x = node(b); x; x = parentOf(x.id)) if (x.id === a) return null;   // not into itself
+    if (node(a).book && node(b).q && bookKids(node(b)).length >= MAX_BOOKS) return null;   // a question holds three books
     return best;
   }
   function onUp(e) {
@@ -665,7 +746,9 @@
       if (a === 'add-link') addLink();
       if (a === 'add-child') {
         const inp = st.panel.querySelector('#sysNewChild'); const name = inp.value.trim(); if (!n || !name) return;
-        n.children.push({ id: uid(), name, note: '', links: [], children: [] });
+        const child = { id: uid(), name, note: '', links: [], children: [] };
+        if (n.id === READING_ID) child.q = n.children.some(c => c.q === 'active') ? 'queued' : 'active';
+        n.children.push(child);
         save(); renderPanel(); st.panel.querySelector('#sysNewChild').focus();
       }
       if (a === 'del-node') {
@@ -681,6 +764,12 @@
       }
       return;
     }
+    const qs = t.closest('[data-sys-q]');
+    if (qs) { const n = current(); if (n && n.q) { setQ(n, qs.dataset.sysQ); save(); renderPanel(); } return; }
+    const ub = t.closest('[data-sys-unbook]');
+    if (ub) { const n = current(); if (n) { n.children = n.children.filter(c => c.id !== ub.dataset.sysUnbook); save(); renderPanel(); } return; }
+    const sh = t.closest('[data-sys-shelf]');
+    if (sh) { window.navigate('reading'); if (window.UnwindShelf) window.UnwindShelf.open(sh.dataset.sysShelf); return; }
     const op = t.closest('[data-sys-open]'); if (op) { open(op.dataset.sysOpen); return; }
     const del = t.closest('[data-sys-del-link]');
     if (del) { const n = current(); n.links.splice(+del.dataset.sysDelLink, 1); save(); renderPanel(); return; }

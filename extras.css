@@ -365,3 +365,15 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
 @media (min-width: 900px) {
   .shelf-legend { width: min(1100px, calc(100vw - 96px)); margin-left: 50%; transform: translateX(-50%); }
 }
+
+/* the current question, on a book's card (shelf.js) and in System */
+.shelf-q { margin: 16px 0 6px; padding: 14px 0 4px; border-top: 1px solid var(--border); }
+.shelf-q .sys-label { margin-top: 0; }
+.shelf-q-text { margin: 0 0 10px; font-size: 15px; line-height: 1.6; color: var(--text-primary); }
+.shelf-q-state { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); }
+.shelf-q-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.shelf-q-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-secondary); }
+.shelf-q-list li:last-child { border-bottom: none; }
+.spine.inq { border-top: 3px solid var(--text-primary); }
+.cover.inq .cover-img { box-shadow: 0 0 0 2px var(--text-primary); }
+.sys-q { margin: 12px 0 2px; }

@@ -35,8 +35,11 @@
     open: null,                         // id of the book in the card
     covers: new Map(),                  // id → data URL
     want: new Set(), timer: 0, observer: null,
-    root: null
+    root: null, sys: false
   };
+  const SYS = () => window.UnwindSystem;
+  const activeQ = () => (st.sys && SYS() ? SYS().active() : null);
+  const inQ = id => { const q = activeQ(); return !!(q && q.books.some(b => b.book === id)); };
 
   const STATUS = { 0: '還沒讀', 1: '在讀', 2: '讀完' };
   const KIND = { purchased: '購買', sideloaded: '自己的檔案', subscription: 'Kobo Plus', sample: '試讀' };
@@ -78,7 +81,7 @@
     const h = 150 + (hash(b.id) % 46);
     const dust = n ? Math.min(0.55, 0.12 + Math.log2(1 + n) * 0.07) : 0;
     const pct = Math.max(0, Math.min(100, b.percentRead || (b.readStatus === 2 ? 100 : 0)));
-    return `<button class="spine s${b.readStatus || 0}${st.open === b.id ? ' open' : ''}" data-book="${esc(b.id)}"
+    return `<button class="spine s${b.readStatus || 0}${st.open === b.id ? ' open' : ''}${inQ(b.id) ? ' inq' : ''}" data-book="${esc(b.id)}"
         style="--w:${w}px;--h:${h}px;--dust:${dust.toFixed(2)};--pct:${pct}%"
         title="${esc(b.title)}${b.author ? ' — ' + esc(b.author) : ''}">
         <span class="spine-title">${esc(shortTitle(b.title))}</span>
@@ -88,7 +91,7 @@
   function cover(b) {
     const url = st.covers.get(b.id);
     const pct = Math.max(0, Math.min(100, b.percentRead || (b.readStatus === 2 ? 100 : 0)));
-    return `<button class="cover${st.open === b.id ? ' open' : ''}" data-book="${esc(b.id)}" title="${esc(b.title)}">
+    return `<button class="cover${st.open === b.id ? ' open' : ''}${inQ(b.id) ? ' inq' : ''}" data-book="${esc(b.id)}" title="${esc(b.title)}">
         <span class="cover-img" data-cover="${b.hasCover ? esc(b.id) : ''}">${url ? `<img src="${url}" alt="">` : `<span class="cover-blank">${esc(shortTitle(b.title))}</span>`}</span>
         <span class="cover-title">${esc(shortTitle(b.title))}</span>
         <span class="cover-bar"><span style="width:${pct}%"></span></span>
@@ -109,14 +112,37 @@
             <p class="shelf-card-meta">${esc(meta)}</p>
           </div>
         </div>
+        ${questionBlock(b)}
         ${hl.length ? `<p class="sys-label">最近的劃線</p>
         <ul class="shelf-hl">${hl.map(h => `<li>${esc(h.text)}${h.note ? `<span class="shelf-hl-note">${esc(h.note)}</span>` : ''}</li>`).join('')}</ul>
         ${b.highlights.length > hl.length ? `<button class="x-btn small" data-shelf="notes" data-title="${esc(b.title)}">看全部 ${b.highlights.length} 條 →</button>` : ''}` : ''}
       </div>`;
   }
 
+  // the one question being read now, and whether this book is in it
+  function questionBlock(b) {
+    if (!st.sys) return '';
+    const q = activeQ();
+    if (!q) return `<div class="shelf-q">
+        <p class="sys-label">還沒有進行中的問題</p>
+        <div class="sys-row"><input class="sys-input" id="shelfQ" maxlength="120" placeholder="這本書要幫你回答什麼問題？" autocomplete="off">
+        <button class="x-btn small primary" data-shelf="start-q">開始，放進這本</button></div>
+      </div>`;
+    const books = q.books, here = books.some(x => x.book === b.id);
+    const list = books.map(x => `<li><span>${esc(x.name)}</span>${x.book === b.id ? '' : `<button class="sys-del" data-shelf-unbook="${esc(x.book)}" aria-label="拿掉 ${esc(x.name)}">×</button>`}</li>`).join('');
+    return `<div class="shelf-q">
+        <p class="sys-label">目前的問題 · ${books.length} / 3 本</p>
+        <p class="shelf-q-text">${esc(q.name)}</p>
+        ${here ? `<p class="shelf-q-state">這本已經在裡面 <button class="x-btn small" data-shelf-unbook="${esc(b.id)}">拿掉</button></p>`
+          : books.length < 3 ? `<button class="x-btn small primary" data-shelf="add-q">放進這個問題</button>`
+          : `<p class="shelf-q-state">已經 3 本了。要放這本，先拿掉一本：</p>`}
+        ${books.length ? `<ul class="shelf-q-list">${list}</ul>` : ''}
+      </div>`;
+  }
+
   // ── the shelf ──
   function render() {
+    if (!st.sys && SYS() && lib().length) SYS().ensure().then(ok => { if (ok && !st.sys) { st.sys = true; if (onPage()) render(); } });
     if (!st.root) return;
     applyTab();
     if (st.tab !== 'shelf') return;
@@ -146,7 +172,7 @@
       ${open ? card(open) : ''}
       <p class="shelf-legend">${st.mode === 'covers'
         ? '封面下的細線＝閱讀進度'
-        : '書脊越寬、點越密＝劃線越多　·　底部填滿＝閱讀進度　·　書名較亮＝在讀'}</p>
+        : '書脊越寬、點越密＝劃線越多　·　底部填滿＝閱讀進度　·　書名較亮＝在讀'}${activeQ() ? '　·　' + (st.mode === 'covers' ? '粗框' : '頂端粗線') + '＝在目前的問題裡' : ''}</p>
       ${list.length
         ? `<div class="shelf-${st.mode}">${list.map(st.mode === 'covers' ? cover : spine).join('')}</div>`
         : '<p class="sys-note">沒有符合的書。</p>'}`;
@@ -208,6 +234,14 @@
     const m = t.closest('[data-shelf-mode]'); if (m) { st.mode = m.dataset.shelfMode; keep('mode', st.mode); render(); return; }
     const a = t.closest('[data-shelf]');
     if (a && a.dataset.shelf === 'close') { st.open = null; render(); return; }
+    if (a && a.dataset.shelf === 'start-q') {
+      const inp = st.root.querySelector('#shelfQ'), text = inp && inp.value.trim();
+      if (!text) { inp && inp.focus(); return; }
+      if (SYS().startQuestion(text) && st.open) SYS().addBook(lib().find(x => x.id === st.open));
+      render(); return;
+    }
+    if (a && a.dataset.shelf === 'add-q') { const bk = lib().find(x => x.id === st.open); if (bk) SYS().addBook(bk); render(); return; }
+    const ub = t.closest('[data-shelf-unbook]'); if (ub) { SYS().removeBook(ub.dataset.shelfUnbook); render(); return; }
     if (a && a.dataset.shelf === 'notes') {
       st.tab = 'notes'; keep('tab', st.tab);
       const s = document.getElementById('readingSearch'); s.value = a.dataset.title;
@@ -227,7 +261,9 @@
     if (e.target.id === 'shelfSamples') { st.samples = e.target.checked; render(); }
   });
   document.addEventListener('input', e => { if (e.target.id === 'readingSearch' && st.tab === 'shelf') render(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && st.open && onPage() && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { st.open = null; render(); } });
+  document.addEventListener('unwind:system', () => { if (onPage() && st.tab === 'shelf') render(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.id === 'shelfQ' && !e.isComposing) { e.preventDefault(); const b = st.root.querySelector('[data-shelf="start-q"]'); if (b) b.click(); return; } if (e.key === 'Escape' && st.open && onPage() && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { st.open = null; render(); } });
 
   // ── wiring ──
   function build() {
@@ -247,13 +283,22 @@
     applyTab();
   }
 
+  // System's 「在書架打開」
+  window.UnwindShelf = {
+    open(id) {
+      st.tab = 'shelf'; keep('tab', st.tab); st.open = id; render();
+      const c = st.root && st.root.querySelector('.shelf-card');
+      if (c) c.scrollIntoView({ block: 'start' });
+    }
+  };
+
   function init() {
     build();
     const baseNavigate = window.navigate;
     window.navigate = function (page) { baseNavigate(page); if (page === 'reading') render(); };
     const baseRenderAll = window.renderAll;
     if (typeof baseRenderAll === 'function') {
-      window.renderAll = function () { baseRenderAll(); if (!lib().length) { st.open = null; st.covers.clear(); } if (onPage()) render(); };
+      window.renderAll = function () { baseRenderAll(); if (!lib().length) { st.open = null; st.covers.clear(); st.sys = false; } if (onPage()) render(); };
     }
     if (onPage()) render();
   }
