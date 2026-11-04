@@ -2965,6 +2965,7 @@ async function tryUnlock() {
     await loadPrivateData(pw);
     storedPassword = pw;
     isPrivate = true;
+    await loadReadingNotes(pw);
     renderAll();
   } catch (err) {
     $("#errorMsg").classList.add("visible");
@@ -2977,6 +2978,7 @@ async function tryUnlock() {
 $("#lockBtn").addEventListener('click', async () => {
   isPrivate = false;
   storedPassword = "";
+  BOOKS = []; LIBRARY = [];
   await loadPublicData();
   renderAll();
 });
@@ -2997,14 +2999,20 @@ $("#themeToggle").addEventListener('click', () => {
 //  READING NOTES — Kobo highlights
 // ═══════════════════════════════════════════════════════════
 
-let BOOKS = [];
+let BOOKS = [];    // books with highlights (Reading, Review)
+let LIBRARY = [];  // every book on the reader, for the shelf
 let readingSortMode = 'book'; // 'book' or 'time'
 
-async function loadReadingNotes() {
+// The Kobo library lives in the private database; it loads only after unlocking.
+async function loadReadingNotes(pw) {
+  BOOKS = []; LIBRARY = [];
+  if (!pw) return;
   try {
-    const res = await fetch('kobo-highlights.json');
-    if (res.ok) BOOKS = await res.json();
-  } catch(e) { console.log('No reading notes found'); }
+    const { data, error } = await sb.rpc('get_library', { pw });
+    if (error) throw error;
+    LIBRARY = Array.isArray(data) ? data : [];
+    BOOKS = LIBRARY.filter(b => b.highlights && b.highlights.length);
+  } catch(e) { console.log('Reading notes unavailable', e); }
 }
 
 function renderReading(query = '') {
@@ -3314,7 +3322,6 @@ streamTextarea.addEventListener('drop', (e) => {
   loadProblems();
   loadFavs();
   await Promise.all([loadPublicData(), loadReviewScope()]);
-  await loadReadingNotes();
   renderAll();
   const openFromHash = () => {
     const h = (location.hash || '').slice(1);

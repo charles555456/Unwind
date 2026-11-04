@@ -108,6 +108,19 @@ async function supabaseRpc(name, args) {
   return text ? JSON.parse(text) : null;
 }
 
+// The Kobo library lives in the private database; the sender key may read it.
+// Until that key is set as a secret, fall back to the old public file if it is still there.
+async function loadBooks() {
+  if (process.env.PUSH_SENDER_KEY) {
+    const books = await supabaseRpc('get_library_for_push', { p_key: process.env.PUSH_SENDER_KEY });
+    return (books || []).filter(b => b.highlights && b.highlights.length);
+  }
+  const file = path.join(__dirname, '..', 'kobo-highlights.json');
+  if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8'));
+  console.error('No highlights: set the PUSH_SENDER_KEY secret so the push can read the private library.');
+  process.exit(1);
+}
+
 // Web push to every phone that turned notifications on in the app.
 async function sendApp(title, body, click) {
   let webpush;
@@ -182,7 +195,7 @@ async function sendTelegram(title, body, click) {
   }
   if (!gate.send) return;
 
-  const books = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'kobo-highlights.json'), 'utf8'));
+  const books = await loadBooks();
   const scope = settings.scope;
   const result = daily(books, day, scope, 5);
   const picks = result.items.slice(0, COUNT);

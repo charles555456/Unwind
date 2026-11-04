@@ -1,133 +1,169 @@
 #!/usr/bin/env python3
 """
-Kobo → Unwind 書摘同步工具
-使用方式：接上 Kobo 後，在終端機執行：
-  python3 ~/Desktop/charlesshen/sync-kobo.py
+Kobo → Unwind library sync.
+
+Reads the reader's database while it is plugged in, and uploads the whole
+library (books, reading progress, highlights) and the cover thumbnails to
+the private Supabase tables. Nothing is written to the public repo.
+
+Run by hand:     python3 ~/Desktop/charlesshen/sync-kobo.py
+Run on plug-in:  ~/.kobo-sync/auto-sync-kobo.sh (launchd), which runs the
+                 copy at ~/.kobo-sync/sync-kobo.py
+
+The upload key is read from the macOS keychain (service "unwind-kobo-sync").
+A local backup of the export is kept at ~/.kobo-sync/kobo-library-backup.json;
+it is not part of the site.
 """
 
-import sqlite3, json, os, glob
+import base64, glob, json, os, sqlite3, subprocess, sys
 
-# 自動尋找 Kobo 裝置
-def find_kobo_db():
-    # macOS: Kobo 通常掛載在 /Volumes/KOBOeReader
-    paths = [
-        "/Volumes/KOBOeReader/.kobo/KoboReader.sqlite",
-        "/Volumes/KOBO eReader/.kobo/KoboReader.sqlite",
-    ]
-    # 也搜尋其他可能的掛載點
-    for vol in glob.glob("/Volumes/*/"):
-        candidate = os.path.join(vol, ".kobo", "KoboReader.sqlite")
-        if os.path.exists(candidate) and candidate not in paths:
-            paths.insert(0, candidate)
+SUPABASE_URL = "https://zoriszrkgoqfqorudcth.supabase.co"
+# the public anon key index.html also ships with; on its own it can only call the
+# password- or key-checked functions. Kept here because launchd cannot read ~/Desktop.
+SUPABASE_ANON = "sb_publishable_2WDf4cHELLvK_EWEWwKKwA_WJ_6vTBq"
+KEYCHAIN_SERVICE = "unwind-kobo-sync"
+COVER_BATCH = 40
 
-    for p in paths:
-        if os.path.exists(p):
-            return p
 
-    # 如果沒插 Kobo，看看本地有沒有之前複製的
-    local = os.path.join(os.path.dirname(__file__), "KoboReader.sqlite")
-    if os.path.exists(local):
-        return local
-
+def find_kobo():
+    """The mounted reader's root folder, or None."""
+    roots = ["/Volumes/KOBOeReader", "/Volumes/KOBO eReader"]
+    roots += [v.rstrip("/") for v in glob.glob("/Volumes/*/") if v.rstrip("/") not in roots]
+    for r in roots:
+        if os.path.exists(os.path.join(r, ".kobo", "KoboReader.sqlite")):
+            return r
     return None
 
 
-def export_highlights(db_path, output_path):
+# ── export ──
+def kind_of(access, downloaded, content_id):
+    if access == 1:
+        return "purchased"
+    if access == 8:
+        return "subscription"
+    if access == 6:
+        return "sample"
+    return "sideloaded" if downloaded or content_id.startswith("file://") else "purchased"
+
+
+def export_library(db_path):
     conn = sqlite3.connect("file:" + db_path + "?mode=ro", uri=True)
-    cursor = conn.cursor()
+    cur = conn.cursor()
 
-    # 建立章節對照表
-    cursor.execute("SELECT ContentID, Title FROM content WHERE ContentType = 899")
+    # chapter titles, for each highlight
     chapter_map = {}
-    for cid, title in cursor.fetchall():
-        file_part = cid.split('#')[0] if '#' in cid else cid
-        chapter_map[file_part] = title
+    for cid, title in cur.execute("SELECT ContentID, Title FROM content WHERE ContentType = 899").fetchall():
+        chapter_map[cid.split("#")[0] if "#" in cid else cid] = title
 
-    # 取得書籍資訊
-    cursor.execute('''
-        SELECT DISTINCT BookTitle, Attribution, BookID
-        FROM content
-        WHERE BookID IN (SELECT DISTINCT VolumeID FROM Bookmark WHERE Text IS NOT NULL AND LENGTH(Text) > 2)
-        AND BookTitle IS NOT NULL
-    ''')
-    book_info = {}
-    for row in cursor.fetchall():
-        if row[2] not in book_info:
-            book_info[row[2]] = {"title": row[0], "author": row[1] or ""}
-
-    # 閱讀進度:content 表的書籍列(ContentID = BookID)帶 ___PercentRead 與
-    # ReadStatus(0=未讀 1=閱讀中 2=讀完)。書單推薦用它分「接著讀」vs「新開」。
-    progress_map = {}
-    try:
-        cursor.execute("SELECT ContentID, ___PercentRead, ReadStatus FROM content WHERE ContentType = 6")
-        for cid, pct, st in cursor.fetchall():
-            progress_map[cid] = {"percent": pct or 0, "status": st or 0}
-    except Exception:
-        pass  # 舊韌體沒這欄位就略過,輸出維持原形
-
-    # 取得所有書摘
-    cursor.execute('''
+    # highlights, grouped by book
+    highlights = {}
+    rows = cur.execute("""
         SELECT VolumeID, Text, Annotation, DateCreated, ContentID
         FROM Bookmark
         WHERE Text IS NOT NULL AND LENGTH(Text) > 2
         ORDER BY DateCreated
-    ''')
-
-    books = {}
-    total = 0
-    for row in cursor.fetchall():
-        vid, text, annotation, date, content_id = row
-        if vid not in book_info:
-            continue
-        if vid not in books:
-            info = book_info[vid]
-            prog = progress_map.get(vid, {})
-            books[vid] = {"title": info["title"], "author": info["author"],
-                          "percentRead": prog.get("percent", None),
-                          "readStatus": prog.get("status", None),
-                          "highlights": []}
-
-        chapter = chapter_map.get(content_id, "")
-        books[vid]["highlights"].append({
+    """).fetchall()
+    for vid, text, annotation, date, content_id in rows:
+        highlights.setdefault(vid, []).append({
             "text": text.strip(),
             "note": (annotation or "").strip(),
-            "chapter": chapter,
-            "date": date
+            "chapter": chapter_map.get(content_id, ""),
+            "date": date,
         })
-        total += 1
 
-    result = sorted(books.values(), key=lambda b: len(b["highlights"]), reverse=True)
-
-    if total == 0:
-        conn.close()
-        raise SystemExit("❌ 讀到 0 條書摘,不覆蓋舊檔。請檢查 Kobo 資料庫或腳本。")
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-
+    # the library: bought, own files, Kobo Plus, and anything opened or highlighted;
+    # store listings the reader merely knows about are left out
+    books = []
+    rows = cur.execute("""
+        SELECT ContentID, Title, Attribution, ___PercentRead, ReadStatus, DateLastRead,
+               ImageId, IsDownloaded, Accessibility
+        FROM content WHERE ContentType = 6 AND Title IS NOT NULL
+    """).fetchall()
+    for cid, title, author, pct, status, last, image_id, downloaded, access in rows:
+        downloaded = str(downloaded).lower() == "true"
+        hl = highlights.get(cid, [])
+        if not (access == 1 or downloaded or (status or 0) > 0 or hl):
+            continue
+        books.append({
+            "id": cid, "title": title, "author": author or "",
+            "kind": kind_of(access, downloaded, cid), "onDevice": downloaded,
+            "percentRead": pct or 0, "readStatus": status or 0, "lastRead": last,
+            "imageId": image_id or "", "highlights": hl,
+        })
     conn.close()
-    return total, len(result)
+
+    # most highlighted first, then most recently opened
+    books.sort(key=lambda b: (len(b["highlights"]), str(b["lastRead"] or "")), reverse=True)
+    total = sum(len(b["highlights"]) for b in books)
+    if total == 0:
+        raise SystemExit("讀到 0 條書摘，不上傳。請檢查 Kobo 資料庫或腳本。")
+    return books, total
+
+
+def find_covers(root, books):
+    """book id → path of its library thumbnail on the reader"""
+    suffix = " - N3_LIBRARY_GRID.parsed"
+    index = {}
+    for d, _, files in os.walk(os.path.join(root, ".kobo-images")):
+        for f in files:
+            if f.endswith(suffix):
+                index[f[: -len(suffix)]] = os.path.join(d, f)
+    return {b["id"]: index[b["imageId"]] for b in books if b["imageId"] in index}
+
+
+# ── upload ──
+def sync_key():
+    try:
+        return subprocess.run(["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
+                              check=True, capture_output=True, text=True).stdout.strip()
+    except subprocess.CalledProcessError:
+        raise SystemExit("鑰匙圈裡沒有 unwind-kobo-sync 金鑰，無法上傳。")
+
+
+def rpc(name, args, anon):
+    # curl rather than urllib: it uses the system's certificates, which the
+    # python.org build of Python does not have unless set up separately
+    res = subprocess.run(
+        ["curl", "-sS", "--fail-with-body", "--max-time", "180", "-X", "POST",
+         SUPABASE_URL + "/rest/v1/rpc/" + name,
+         "-H", "apikey: " + anon, "-H", "Content-Type: application/json", "--data-binary", "@-"],
+        input=json.dumps(args).encode("utf-8"), capture_output=True)
+    if res.returncode != 0:
+        raise SystemExit(f"上傳失敗（{name}）：{(res.stdout or res.stderr).decode('utf-8', 'replace')[:300]}")
+    return json.loads(res.stdout or b"null")
 
 
 def main():
-    print("📚 Kobo → Unwind 書摘同步工具")
-    print("=" * 40)
+    force = "--force" in sys.argv
+    print("Kobo → Unwind 書庫同步")
+    root = find_kobo()
+    if not root:
+        raise SystemExit("找不到 Kobo。請確認閱讀器已接上電腦。")
+    print("找到閱讀器：", root)
 
-    db_path = find_kobo_db()
-    if not db_path:
-        print("❌ 找不到 Kobo 裝置！")
-        print("   請確認 Kobo 已接上電腦，或把 KoboReader.sqlite 複製到這個資料夾。")
-        return
+    books, total = export_library(os.path.join(root, ".kobo", "KoboReader.sqlite"))
+    print(f"書庫 {len(books)} 本，書摘 {total} 條（有書摘的 {sum(1 for b in books if b['highlights'])} 本）")
 
-    print(f"✅ 找到資料庫: {db_path}")
+    # local backup, private to this Mac
+    backup = os.path.expanduser("~/.kobo-sync/kobo-library-backup.json")
+    with open(backup, "w", encoding="utf-8") as f:
+        json.dump([{k: v for k, v in b.items() if k != "imageId"} for b in books], f, ensure_ascii=False, indent=1)
 
-    output_path = os.path.join(os.path.dirname(__file__), "kobo-highlights.json")
-    total, book_count = export_highlights(db_path, output_path)
+    anon, key = SUPABASE_ANON, sync_key()
+    payload = [{k: v for k, v in b.items() if k != "imageId"} for b in books]
+    res = rpc("kobo_sync", {"p_key": key, "p_books": payload, "p_force": force}, anon)
+    print("已上傳書庫：", res)
 
-    print(f"✅ 匯出完成！{total} 條書摘，{book_count} 本書")
-    print(f"   儲存到: {output_path}")
-    print()
-    print("下一步：把 kobo-highlights.json 上傳到 GitHub repo 即可更新網站。")
+    covers = find_covers(root, books)
+    items = list(covers.items())
+    sent = 0
+    for i in range(0, len(items), COVER_BATCH):
+        batch = []
+        for book_id, path in items[i:i + COVER_BATCH]:
+            with open(path, "rb") as f:
+                batch.append({"id": book_id, "b64": base64.b64encode(f.read()).decode("ascii")})
+        sent += rpc("kobo_set_covers", {"p_key": key, "p_covers": batch}, anon) or 0
+    print(f"已上傳封面 {sent} 張")
 
 
 if __name__ == "__main__":
