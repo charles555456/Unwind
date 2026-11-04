@@ -144,6 +144,9 @@
       </div>
       ${c.samples ? `<label class="shelf-samples"><input type="checkbox" id="shelfSamples"${st.samples ? ' checked' : ''}> 顯示試讀本（${c.samples}）</label>` : ''}
       ${open ? card(open) : ''}
+      <p class="shelf-legend">${st.mode === 'covers'
+        ? '封面下的細線＝閱讀進度'
+        : '書脊越寬、點越密＝劃線越多　·　底部填滿＝閱讀進度　·　書名較亮＝在讀'}</p>
       ${list.length
         ? `<div class="shelf-${st.mode}">${list.map(st.mode === 'covers' ? cover : spine).join('')}</div>`
         : '<p class="sys-note">沒有符合的書。</p>'}`;
