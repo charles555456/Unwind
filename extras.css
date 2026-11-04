@@ -292,3 +292,72 @@ mark.reader-mark { background: rgba(232, 168, 56, 0.28); color: inherit; border-
   }
 }
 .file-frame { background: transparent; border-radius: 0; }
+
+/* Shelf on the Reading page (shelf.js) */
+.shelf-tabs { display: flex; gap: 8px; margin: 0 0 16px; }
+#page-reading.shelf-on #readingList, #page-reading.shelf-on #readingSortBtn { display: none; }
+#page-reading:not(.shelf-on) #shelfRoot { display: none; }
+.shelf { margin-top: 8px; }
+.shelf-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 10px; }
+.shelf-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; margin-left: 2px; }
+.review-tab.active .shelf-count { color: inherit; opacity: 0.6; }
+.shelf-right { display: flex; align-items: center; gap: 10px; }
+.shelf-sort { font: inherit; font-size: 13px; color: var(--text-secondary); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
+.shelf-mode { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.shelf-mode button { background: none; border: none; padding: 5px 12px; font: inherit; font-size: 13px; color: var(--text-tertiary); cursor: pointer; }
+.shelf-mode button.active { background: var(--text-primary); color: var(--bg); }
+.shelf-samples { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-tertiary); margin: 0 0 14px; cursor: pointer; }
+
+/* wider than the reading column on a computer, so the shelf holds more per row */
+@media (min-width: 900px) {
+  .shelf-spines, .shelf-covers, .shelf-card { width: min(1100px, calc(100vw - 96px)); margin-left: 50%; transform: translateX(-50%); }
+}
+
+/* spines: width = highlights, dot density = highlights, fill = progress */
+.shelf-spines { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 26px 3px; padding: 6px 0 12px; }
+.spine {
+  position: relative; flex: none; width: var(--w); height: var(--h); padding: 10px 0 22px; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  background: color-mix(in srgb, var(--text-primary) 4%, var(--bg)); border: 1px solid var(--border); border-radius: 2px;
+  color: var(--text-tertiary); cursor: pointer; font: inherit; transition: transform 0.25s ease, border-color 0.2s ease;
+}
+.spine::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--dust);
+  background-image: radial-gradient(var(--text-primary) 0.6px, transparent 0.8px); background-size: 4px 4px;
+}
+.spine::after { content: ""; position: absolute; left: -2px; right: -2px; bottom: -7px; height: 1px; background: var(--border); }
+.spine { background-image: linear-gradient(to top, color-mix(in srgb, var(--text-primary) 12%, transparent) var(--pct), transparent var(--pct)); }
+.spine-title {
+  position: relative; writing-mode: vertical-rl; text-orientation: mixed; font-size: 12px; line-height: 1.15;
+  max-height: calc(var(--h) - 40px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.spine-n { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font-size: 9.5px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.spine.s1 { color: var(--text-primary); }
+.spine.s2 { color: var(--text-secondary); border-color: color-mix(in srgb, var(--text-primary) 30%, var(--border)); }
+.spine:hover, .spine:focus-visible, .spine.open { transform: translateY(-8px); border-color: var(--text-tertiary); outline: none; }
+.spine.open { border-color: var(--text-primary); }
+
+/* covers: the reader's thumbnails, greyscale */
+.shelf-covers { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 22px 14px; padding: 6px 0 12px; }
+.cover { display: flex; flex-direction: column; gap: 6px; background: none; border: none; padding: 0; text-align: left; font: inherit; color: var(--text-secondary); cursor: pointer; }
+.cover-img { display: block; aspect-ratio: 149 / 198; overflow: hidden; border-radius: 2px; background: color-mix(in srgb, var(--text-primary) 5%, var(--bg)); box-shadow: 0 0 0 1px var(--border); }
+.cover-img img { display: block; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.05); transition: transform 0.25s ease; }
+.cover-blank { display: flex; align-items: center; justify-content: center; height: 100%; padding: 8px; box-sizing: border-box; font-size: 11px; line-height: 1.4; text-align: center; color: var(--text-tertiary); }
+.cover-title { font-size: 12px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cover-bar { display: block; height: 2px; background: var(--border); }
+.cover-bar span { display: block; height: 100%; background: var(--text-secondary); }
+.cover:hover .cover-img img, .cover:focus-visible .cover-img img { transform: scale(1.03); }
+.cover.open .cover-img { box-shadow: 0 0 0 1px var(--text-primary); }
+
+/* the card for one book */
+.shelf-card { position: relative; box-sizing: border-box; margin-bottom: 26px; padding: 18px 20px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--text-primary) 2%, var(--bg)); }
+.shelf-close { position: absolute; top: 10px; right: 10px; }
+.shelf-card-head { display: flex; gap: 16px; align-items: flex-start; padding-right: 32px; }
+.shelf-card-head .cover-img { flex: none; width: 76px; }
+.shelf-card-title { margin: 0; font-size: 17px; font-weight: 500; line-height: 1.4; color: var(--text-primary); }
+.shelf-card-author { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
+.shelf-card-meta { margin: 8px 0 0; font-size: 12px; color: var(--text-tertiary); }
+.shelf-hl { list-style: none; margin: 4px 0 14px; padding: 0; }
+.shelf-hl li { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; line-height: 1.75; color: var(--text-primary); }
+.shelf-hl li:last-child { border-bottom: none; }
+.shelf-hl-note { display: block; margin-top: 4px; font-size: 13px; color: var(--text-tertiary); }
