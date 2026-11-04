@@ -183,3 +183,19 @@ BEGIN
   RETURN n;
 END;
 $$;
+
+-- ── the daily push's sender key, replaced 2026-11-04 ──
+-- The old key had never been set as a GitHub secret. The new one lives in
+-- the owner's keychain (service "unwind-push-sender") and in the GitHub
+-- secret PUSH_SENDER_KEY; this is its SHA-256.
+CREATE OR REPLACE FUNCTION push_sender_ok(p_key TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  RETURN p_key IS NOT NULL
+     AND encode(extensions.digest(p_key, 'sha256'), 'hex') = 'cbf1e8562ef59c0d6df1a8388aadbe48961a74f22dbe3e1ba10844de1dcf6cb7';
+END;
+$$;
+REVOKE ALL ON FUNCTION push_sender_ok(TEXT) FROM PUBLIC, anon, authenticated;
