@@ -311,38 +311,40 @@
     .prob-hit, .prob-del { background: none; border: none; cursor: pointer; font-family: inherit; color: var(--text-tertiary); font-size: 13px; padding: 2px 4px; }
     .prob-hit:hover { color: var(--text-primary); }
     .prob-del:hover { color: #c44; }
-    /* Projects — static grid (filter tabs + image cards) */
-    .proj-tabs { display: flex; gap: 22px; flex-wrap: wrap; padding-bottom: 14px; margin: 4px 0 28px; border-bottom: 1px solid var(--border); }
-    .proj-tabs button { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 17px; color: var(--text-tertiary); transition: color 0.2s; }
+    /* Projects — one project per row; every project sits on the same 16:10 stage */
+    .proj-tabs { display: flex; gap: 22px; flex-wrap: wrap; padding-bottom: 14px; margin: 4px 0 36px; border-bottom: 1px solid var(--border); }
+    .proj-tabs button { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 15px; color: var(--text-tertiary); }
     .proj-tabs button:hover, .proj-tabs button.on { color: var(--text-primary); }
-    .proj-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 16px; }
-    @media (max-width: 640px) { .proj-grid { grid-template-columns: 1fr; gap: 32px; } }
-    .proj-card { display: block; color: inherit; text-decoration: none; }
+    .proj-tabs button:focus-visible, .proj-card a:focus-visible { outline: 1px solid var(--text-primary); outline-offset: 4px; }
+    .proj-list { display: flex; flex-direction: column; gap: 64px; }
     .proj-card[hidden] { display: none; }
-    .proj-thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--hover-bg); }
-    .proj-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .proj-arrow { position: absolute; top: 10px; right: 12px; font-size: 13px; line-height: 1; color: #e4572e; }
-    .proj-hit { display: block; color: inherit; text-decoration: none; }
-    .proj-hit:hover .proj-name { text-decoration: underline; text-underline-offset: 3px; }
-    .proj-links { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
-    .proj-links a { font-size: 13px; color: var(--text-tertiary); text-decoration: none; }
-    .proj-links a:hover { color: var(--text-primary); }
-    .proj-name { display: block; margin-top: 14px; font-size: 16px; font-weight: 500; color: var(--text-primary); }
-    .proj-desc { margin-top: 4px; font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); }
-    .proj-card.has-gallery { grid-column: 1 / -1; }
-    .proj-screens { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; padding: 16px; background: var(--hover-bg); }
-    .proj-screens figure { margin: 0; }
-    .proj-screens img { width: 100%; height: auto; display: block; border-radius: 8px; }
-    .proj-screens figcaption { margin-top: 8px; font-size: 11px; color: var(--text-tertiary); text-align: center; }
-    @media (max-width: 640px) {
-      .proj-screens { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
-      .proj-screens figure { flex: 0 0 42%; scroll-snap-align: start; }
+    .proj-stage {
+      display: flex; align-items: center; justify-content: center; gap: 3%;
+      aspect-ratio: 16 / 10; padding: 6% 7%; box-sizing: border-box;
+      background: var(--hover-bg); border-radius: 4px; overflow: hidden;
+      color: inherit; text-decoration: none;
     }
-    .proj-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
-    .proj-pill { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); }
-    .proj-pill.live::before, .proj-pill.building::before { content: "●"; margin-right: 4px; }
-    .proj-pill.building::before { color: #3aa07e; }
-    .proj-pill.live::before { color: var(--text-primary); }
+    .proj-stage img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 0 0 1px var(--border); }
+    /* phones: each one is as wide as the row allows, but never taller than the stage */
+    .proj-stage.phone { container-type: inline-size; gap: 2.6cqw; }
+    .proj-stage.phone figure { margin: 0; flex: 0 0 auto; width: min(calc((86cqw - (var(--n) - 1) * 2.6cqw) / var(--n)), 23cqw); }
+    .proj-stage.phone img { width: 100%; height: auto; max-height: none; border-radius: 10px; }
+    .proj-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-top: 18px; }
+    .proj-name { margin: 0; font-size: 17px; font-weight: 500; color: var(--text-primary); }
+    .proj-meta { display: flex; gap: 14px; white-space: nowrap; font-size: 13px; color: var(--text-tertiary); }
+    .proj-meta .live, .proj-meta .building { color: var(--text-secondary); }
+    .proj-meta .building::before, .proj-meta .live::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin: 0 6px 1px 0; vertical-align: middle; }
+    .proj-meta .building::before { background: #3aa07e; }
+    .proj-meta .live::before { background: var(--text-primary); }
+    .proj-desc { margin-top: 6px; max-width: 34em; font-size: 14px; line-height: 1.65; color: var(--text-secondary); }
+    .proj-links { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; }
+    .proj-links a { font-size: 13px; color: var(--text-tertiary); text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+    .proj-links a:hover { color: var(--text-primary); border-color: var(--text-primary); }
+    @media (max-width: 640px) {
+      .proj-list { gap: 48px; }
+      .proj-stage { padding: 5%; }
+      .proj-head { flex-direction: column; gap: 4px; }
+    }
     .prob-empty { color: var(--text-tertiary); font-size: 14px; padding: 32px 0; text-align: center; }
 
     .section-label {
@@ -1775,7 +1777,7 @@
         </div>
       </div>
       <div class="proj-tabs" id="projTabs"></div>
-      <div class="proj-grid" id="projGrid"></div>
+      <div class="proj-list" id="projGrid"></div>
     </div>
 
     <!-- ─── Footer ─── -->
@@ -3480,52 +3482,59 @@ streamTextarea.addEventListener('drop', (e) => {
 </script>
 <script>
 // ═══════════════════════════════════════════════════════════
-//  PROJECTS — static grid
+//  PROJECTS — one per row, same stage for every project
 // ═══════════════════════════════════════════════════════════
 (() => {
+  // screens：projects/ 底下的圖（不含 .jpg）。kind：'phone' = 手機畫面並排；'desktop' = 一張橫向畫面
   const PROJECTS = [
-    { img: 'cut',       name: 'DinoCut',                tag: 'App',     status: 'building', url: '',
-      desc: '減脂追蹤 app：把吃、睡、練的每日打卡包裝成爬山探險 + 養夥伴寵物。',
-      // gallery：有的話，卡片佔滿整列並排顯示各頁截圖（projects/ 底下的路徑，不含 .jpg）
-      gallery: [['dinocut/home', '首頁'], ['dinocut/workout', '訓練'], ['dinocut/templates', '模板'], ['dinocut/you', '夥伴']] },
-    { img: 'yet-pos',   name: 'yet POS',                tag: 'App',     status: 'building', url: '',
-      desc: 'yet coffee 的點餐 / 收銀系統，Next.js + Supabase。' },
-    { img: 'timebox',   name: 'Timebox',                tag: 'App',     status: 'building', url: 'https://timebox.run',
-      desc: 'Timeboxing 時間盒規劃 app：每件事給一個固定時段，在盒子裡做完。' },
-    { img: 'deep-work', name: 'yet coffee × Deep Work', tag: 'Space',   status: 'live',     url: 'https://theyetproject.com', ig: 'theyetproject',
-      desc: '在 yet coffee 的深度工作時段 —— 安靜的空間、完整的時間、一杯好咖啡。' ,
-      gallery: [['yet/seats', '即時空位'], ['yet/instagram', 'Instagram']] },
-    { img: 'trading',   name: 'Price Action Trading',   tag: 'Trading', status: 'building', url: '',
-      desc: '用 Al Brooks price action 讀日經 225：交易紀錄、缺口研究、規則手冊。' },
+    { name: 'DinoCut', tag: 'App', status: 'building', kind: 'phone',
+      screens: ['dinocut/home', 'dinocut/workout', 'dinocut/templates', 'dinocut/you'],
+      desc: '減脂追蹤 app：把吃、睡、練的每日打卡包裝成爬山探險 + 養夥伴寵物。' },
+    { name: 'yet coffee × Deep Work', tag: 'Space', status: 'live', kind: 'phone',
+      screens: ['yet/seats', 'yet/instagram'],
+      url: 'https://theyetproject.com', ig: 'theyetproject',
+      desc: '信義區的安靜咖啡廳：不能聊天、不用訂位，帶著還沒做完的事進來，做完再走。' },
+    { name: 'yet POS', tag: 'App', status: 'building', kind: 'desktop',
+      screens: ['yet-pos'],
+      desc: 'yet coffee 的點餐與收銀系統，也負責店內即時空位。' },
+    { name: 'Timebox', tag: 'App', status: 'building', kind: 'desktop',
+      screens: ['timebox'], url: 'https://timebox.run',
+      desc: '時間盒規劃：每件事給一個固定時段，在盒子裡做完。' },
+    { name: 'Price Action Trading', tag: 'Trading', status: 'building', kind: 'desktop',
+      screens: ['trading'],
+      desc: '用 Al Brooks price action 讀日經 225，每筆交易都記進 Entry Ledger。' },
   ];
-  const LABEL = { building: '進行中', live: '運作中', paused: '暫停' };
-  const grid = document.getElementById('projGrid');
+  const LABEL = { building: '進行中', live: '營業中', paused: '暫停' };
+  const list = document.getElementById('projGrid');
   const tabs = document.getElementById('projTabs');
-  if (!grid) return;
+  if (!list) return;
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const host = u => u.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
   const cards = PROJECTS.map(p => {
-    const el = document.createElement('div');
-    el.className = 'proj-card' + (p.gallery ? ' has-gallery' : '') + (p.url ? ' has-url' : '');
+    const el = document.createElement('article');
+    el.className = 'proj-card';
     el.dataset.tag = p.tag;
-    const open = p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" class="proj-hit">` : '';
-    const shut = p.url ? '</a>' : '';
+    const shots = p.screens.map(src => p.kind === 'phone'
+      ? `<figure><img src="projects/${src}.jpg" alt="" loading="lazy"></figure>`
+      : `<img src="projects/${src}.jpg" alt="" loading="lazy">`).join('');
+    const stage = p.url
+      ? `<a class="proj-stage ${p.kind}" style="--n:${p.screens.length}" href="${esc(p.url)}" target="_blank" rel="noopener" aria-label="${esc(p.name)}">${shots}</a>`
+      : `<div class="proj-stage ${p.kind}" style="--n:${p.screens.length}" role="img" aria-label="${esc(p.name)} 畫面">${shots}</div>`;
     const links = [
-      p.url && `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ''))} ↗</a>`,
-      p.ig && `<a href="https://www.instagram.com/${esc(p.ig)}/" target="_blank" rel="noopener">Instagram @${esc(p.ig)} ↗</a>`,
+      p.url && `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(host(p.url))}</a>`,
+      p.ig && `<a href="https://www.instagram.com/${esc(p.ig)}/" target="_blank" rel="noopener">Instagram</a>`,
     ].filter(Boolean).join('');
-    el.innerHTML = `
-      ${p.gallery
-        ? `<div class="proj-screens">${p.gallery.map(([src, cap]) => `<figure><img src="projects/${src}.jpg" alt="${esc(p.name)} — ${esc(cap)}" loading="lazy"><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>`
-        : `${open}<div class="proj-thumb"><img src="projects/${p.img}.jpg" alt="${esc(p.name)}" loading="lazy">${p.url ? '<span class="proj-arrow">↗</span>' : ''}</div>${shut}`}
-      ${open}<span class="proj-name">${esc(p.name)}</span>${shut}
+    el.innerHTML = `${stage}
+      <div class="proj-head">
+        <h2 class="proj-name">${esc(p.name)}</h2>
+        <span class="proj-meta"><span>${esc(p.tag)}</span><span class="${p.status}">${LABEL[p.status] || ''}</span></span>
+      </div>
       <p class="proj-desc">${esc(p.desc)}</p>
-      ${links ? `<div class="proj-links">${links}</div>` : ''}
-      <div class="proj-pills"><span class="proj-pill">${esc(p.tag)}</span><span class="proj-pill ${p.status}">${LABEL[p.status] || ''}</span></div>`;
-    grid.appendChild(el);
+      ${links ? `<div class="proj-links">${links}</div>` : ''}`;
+    list.appendChild(el);
     return el;
   });
-
 
   const filters = ['All', ...new Set(PROJECTS.map(p => p.tag))];
   filters.forEach((f, i) => {
