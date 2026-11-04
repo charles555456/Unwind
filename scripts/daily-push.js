@@ -109,16 +109,13 @@ async function supabaseRpc(name, args) {
 }
 
 // The Kobo library lives in the private database; the sender key may read it.
-// Until that key is set as a secret, fall back to the old public file if it is still there.
 async function loadBooks() {
-  if (process.env.PUSH_SENDER_KEY) {
-    const books = await supabaseRpc('get_library_for_push', { p_key: process.env.PUSH_SENDER_KEY });
-    return (books || []).filter(b => b.highlights && b.highlights.length);
+  if (!process.env.PUSH_SENDER_KEY) {
+    console.error('No highlights: set the PUSH_SENDER_KEY secret so the push can read the private library.');
+    process.exit(1);
   }
-  const file = path.join(__dirname, '..', 'kobo-highlights.json');
-  if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8'));
-  console.error('No highlights: set the PUSH_SENDER_KEY secret so the push can read the private library.');
-  process.exit(1);
+  const books = await supabaseRpc('get_library_for_push', { p_key: process.env.PUSH_SENDER_KEY });
+  return (books || []).filter(b => b.highlights && b.highlights.length);
 }
 
 // Web push to every phone that turned notifications on in the app.

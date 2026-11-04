@@ -7,3 +7,6 @@ KoboReader.sqlite*
 supabase-setup.sql
 **/supabase-setup.sql
 kobo-sync.log
+
+# The Kobo library lives in the private database (see sync-kobo.py)
+kobo-highlights.json
