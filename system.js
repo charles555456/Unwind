@@ -109,8 +109,20 @@
       children: (o.children || o.items || []).map(c => normNode(c)),
       // reading: a question carries its status, a book its Kobo id
       q: ['active', 'queued', 'done'].includes(o.q) ? o.q : undefined,
-      book: o.book ? String(o.book) : undefined
+      book: o.book ? String(o.book) : undefined,
+      // a question's worked answer: per book (keyed by the book node's id), then the practice
+      answers: o.q && o.answers && typeof o.answers === 'object' ? cleanAnswers(o.answers) : undefined,
+      practice: o.q && o.practice && typeof o.practice === 'object'
+        ? { how: String(o.practice.how || ''), when: String(o.practice.when || ''), check: String(o.practice.check || '') } : undefined
     };
+  }
+  function cleanAnswers(a) {
+    const out = {};
+    Object.keys(a).slice(0, 12).forEach(k => {
+      const v = a[k] || {};
+      out[String(k)] = { text: String(v.text || ''), quotes: (Array.isArray(v.quotes) ? v.quotes : []).slice(0, 30).map(x => ({ text: String(x.text || ''), chapter: String(x.chapter || '') })) };
+    });
+    return out;
   }
   const cleanLinks = ls => (ls || []).filter(l => Array.isArray(l) && l.length === 2).map(l => [String(l[0]), String(l[1])]);
 
@@ -513,7 +525,8 @@
         return `<li><button class="sys-link" data-sys-open="${esc(b.id)}">${esc(b.name)}</button><span class="sys-count">${pct}</span>
           <button class="sys-del" data-sys-unbook="${esc(b.id)}" aria-label="從這個問題拿掉 ${esc(b.name)}">×</button></li>`;
       }).join('')}</ul>` : ''}
-      ${books.length < MAX_BOOKS ? `<button class="x-btn small" data-x-goto="reading">到書架挑書 →</button>` : ''}`;
+      <div class="sys-row">${books.length ? `<button class="x-btn small primary" data-sys-qpage="${esc(q.id)}">打開問題頁 →</button>` : ''}
+      ${books.length < MAX_BOOKS ? `<button class="x-btn small" data-x-goto="reading">到書架挑書 →</button>` : ''}</div>`;
   }
   function bookBlock(b) {
     const lb = libBook(b.book);
@@ -547,6 +560,23 @@
       q.children.push({ id: uid(), name: shortTitle(book.title), note: '', links: [], children: [], book: book.id });
       save(); if (onPage()) renderPanel();
       return 'ok';
+    },
+    questions() {
+      const r = readingNode(false);
+      return r ? r.children.filter(c => c.q).map(q => ({ id: q.id, name: q.name, q: q.q, n: bookKids(q).length })) : [];
+    },
+    question(id) {
+      const q = node(id);
+      if (!q || !q.q) return null;
+      return { id: q.id, name: q.name, q: q.q, books: bookKids(q).map(b => ({ id: b.id, book: b.book, name: b.name })),
+        answers: JSON.parse(JSON.stringify(q.answers || {})), practice: Object.assign({ how: '', when: '', check: '' }, q.practice || {}) };
+    },
+    setQuestionData(id, patch) {
+      const q = node(id);
+      if (!q || !q.q) return;
+      if (patch.answers) q.answers = cleanAnswers(patch.answers);
+      if (patch.practice) q.practice = { how: String(patch.practice.how || ''), when: String(patch.practice.when || ''), check: String(patch.practice.check || '') };
+      save();
     },
     removeBook(bookId) {
       const q = activeQ(); if (!q) return;
@@ -768,6 +798,8 @@
     if (qs) { const n = current(); if (n && n.q) { setQ(n, qs.dataset.sysQ); save(); renderPanel(); } return; }
     const ub = t.closest('[data-sys-unbook]');
     if (ub) { const n = current(); if (n) { n.children = n.children.filter(c => c.id !== ub.dataset.sysUnbook); save(); renderPanel(); } return; }
+    const qp = t.closest('[data-sys-qpage]');
+    if (qp) { window.navigate('reading'); if (window.UnwindQuestion) window.UnwindQuestion.open(qp.dataset.sysQpage); return; }
     const sh = t.closest('[data-sys-shelf]');
     if (sh) { window.navigate('reading'); if (window.UnwindShelf) window.UnwindShelf.open(sh.dataset.sysShelf); return; }
     const op = t.closest('[data-sys-open]'); if (op) { open(op.dataset.sysOpen); return; }

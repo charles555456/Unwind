@@ -27,7 +27,7 @@
   const keep = (k, v) => { try { localStorage.setItem('unwind-shelf-' + k, v); } catch (e) {} };
 
   const st = {
-    tab: pref('tab', 'shelf'),          // shelf | notes
+    tab: pref('tab', 'shelf'),          // shelf | notes | question
     mode: pref('mode', 'spines'),       // spines | covers
     filter: pref('filter', 'all'),      // all | reading | finished | unread
     sort: pref('sort', 'recent'),       // recent | highlights | title
@@ -137,6 +137,7 @@
           : books.length < 3 ? `<button class="x-btn small primary" data-shelf="add-q">放進這個問題</button>`
           : `<p class="shelf-q-state">已經 3 本了。要放這本，先拿掉一本：</p>`}
         ${books.length ? `<ul class="shelf-q-list">${list}</ul>` : ''}
+        ${books.length ? `<button class="x-btn small" data-shelf="qpage">打開問題頁 →</button>` : ''}
       </div>`;
   }
 
@@ -185,7 +186,9 @@
     const page = document.getElementById('page-reading');
     if (!page) return;
     page.classList.toggle('shelf-on', st.tab === 'shelf');
+    page.classList.toggle('question-on', st.tab === 'question');
     page.querySelectorAll('[data-shelf-tab]').forEach(b => b.classList.toggle('active', b.dataset.shelfTab === st.tab));
+    document.dispatchEvent(new CustomEvent('unwind:reading-tab', { detail: st.tab }));
   }
 
   // ── covers, fetched as they come into view ──
@@ -240,6 +243,7 @@
       if (SYS().startQuestion(text) && st.open) SYS().addBook(lib().find(x => x.id === st.open));
       render(); return;
     }
+    if (a && a.dataset.shelf === 'qpage') { const q = activeQ(); if (q && window.UnwindQuestion) window.UnwindQuestion.open(q.id); return; }
     if (a && a.dataset.shelf === 'add-q') { const bk = lib().find(x => x.id === st.open); if (bk) SYS().addBook(bk); render(); return; }
     const ub = t.closest('[data-shelf-unbook]'); if (ub) { SYS().removeBook(ub.dataset.shelfUnbook); render(); return; }
     if (a && a.dataset.shelf === 'notes') {
@@ -271,7 +275,7 @@
     if (!page || document.getElementById('shelfRoot')) return;
     const tabs = document.createElement('div');
     tabs.className = 'shelf-tabs';
-    tabs.innerHTML = '<button class="review-tab" data-shelf-tab="shelf">書架</button><button class="review-tab" data-shelf-tab="notes">書摘</button>';
+    tabs.innerHTML = '<button class="review-tab" data-shelf-tab="shelf">書架</button><button class="review-tab" data-shelf-tab="notes">書摘</button><button class="review-tab" data-shelf-tab="question">問題</button>';
     const toolbar = page.querySelector('.reading-toolbar');
     page.insertBefore(tabs, toolbar);
     const root = document.createElement('section');
@@ -285,6 +289,7 @@
 
   // System's 「在書架打開」
   window.UnwindShelf = {
+    tab(name) { st.tab = name; keep('tab', st.tab); render(); },
     open(id) {
       st.tab = 'shelf'; keep('tab', st.tab); st.open = id; render();
       const c = st.root && st.root.querySelector('.shelf-card');
